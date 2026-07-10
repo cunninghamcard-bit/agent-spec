@@ -374,6 +374,35 @@ estimate: 1d                                  # Effort estimate (optional): 0.5d
 - `depends`: list of spec file stems or spec names this spec depends on. Used by `agent-spec graph` to build the dependency DAG and critical path.
 - `estimate`: effort estimate string. Used by `agent-spec graph` for critical path weighting and node labels.
 
+
+### Report Mode (non-Rust / TypeScript projects)
+
+By default scenarios are verified with `cargo test <selector>` — Rust only. For any other stack, declare the project's own test command in the frontmatter and point at the JUnit XML report it writes:
+
+```spec
+spec: task
+name: "Admin registration"
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.agent-spec/report.xml
+test_report: .agent-spec/report.xml
+---
+```
+
+- `test_command`: the project's own way of running tests, executed once per verification via `sh -c` from the `--code` root. The optional `{selectors}` placeholder expands to a regex alternation of all scenario selectors (metacharacters escaped) for targeted runs.
+- `test_report`: where the command writes its JUnit XML report, relative to the `--code` root. vitest/jest use `--reporter=junit`; Maven/Gradle emit it natively; pytest uses `--junitxml`; Rust can use cargo-nextest.
+
+**Selector rules in report mode.** A `Test:` selector matches a report testcase when it equals the testcase `name` or the name **ends with** the selector. vitest names testcases as `describe > it title`, so bind the `it` title:
+
+```spec
+Scenario: Duplicate email gets 409
+  Test: rejects duplicate email with 409
+```
+
+matches `<testcase name="registration > rejects duplicate email with 409">`. A structured selector's `Package:` filters by `classname` prefix (for vitest, the test file path).
+
+**Verdicts are strict — no hollow passes.** Zero matching testcases, multiple matching testcases, and skipped testcases are all `fail`, and a missing report file fails every scenario with the expected path in the reason. Write selectors that are unique within the suite.
+
+Specs without `test_command` keep the cargo behavior unchanged.
+
 ### Three-Layer Inheritance
 
 ```

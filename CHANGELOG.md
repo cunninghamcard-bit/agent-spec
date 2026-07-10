@@ -4,6 +4,28 @@ All notable changes to `agent-spec` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Report-driven verification (report mode).** Specs may declare
+  `test_command` + `test_report` in the frontmatter; verification runs the
+  project's own test command once via `sh -c` and judges every scenario by
+  matching its `Test:` selector against testcase names in the JUnit XML
+  report. Opens mechanical verification to any stack that emits JUnit XML
+  (vitest/jest, Maven/Gradle, pytest, cargo-nextest) with no per-framework
+  CLI adapter. Strict verdicts: zero-match, ambiguous match, skipped
+  testcase, and missing report are all `fail`. Optional `{selectors}`
+  placeholder expands to an escaped regex alternation for targeted runs;
+  a structured selector's `Package:` filters by `classname` prefix.
+
+### Fixed
+
+- Boundary checks now treat bare manifest filenames (`Cargo.toml`,
+  `Cargo.lock`, `*.md`) as path boundaries, and relativize absolute change
+  paths against the canonicalized workspace root before matching — both
+  previously made `--change-scope` boundary verification fail spuriously.
+
 ## [0.3.0] - 2026-06-04
 
 The **BDD-spine** release. agent-spec absorbs living-spec-library (OpenSpec) and

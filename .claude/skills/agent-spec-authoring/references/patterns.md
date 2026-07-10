@@ -341,3 +341,45 @@ agent-spec:   Write Contract 15min + Read explain 5min + Approve 2min = ~22min
 ```
 
 The 15 minutes spent writing a Contract is higher-value than the 30 minutes spent reading a diff, because you're defining "what is correct" instead of guessing "is this code correct".
+
+## Report Mode Contract Example (TypeScript / vitest)
+
+```spec
+spec: task
+name: "User registration status codes"
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.agent-spec/report.xml
+test_report: .agent-spec/report.xml
+---
+
+## Intent
+
+Return deterministic status codes for new-user and duplicate-email
+registration, verified through the project's own vitest suite.
+
+## Decisions
+
+- New user returns status `201`
+- Duplicate email returns status `409`
+
+## Boundaries
+
+### Allowed Changes
+- src/**
+
+## Completion Criteria
+
+Scenario: New user gets 201
+  Test: returns 201 for a new user
+  Given no user with email "alice@example.com" exists
+  When the client registers "alice@example.com"
+  Then the returned status is 201
+
+Scenario: Duplicate email gets 409
+  Test: rejects duplicate email with 409
+  Given a user with email "alice@example.com" exists
+  When the client registers "alice@example.com" again
+  Then the returned status is 409
+```
+
+The selector is the vitest `it` title; the report testcase name
+`registration > rejects duplicate email with 409` matches by suffix.

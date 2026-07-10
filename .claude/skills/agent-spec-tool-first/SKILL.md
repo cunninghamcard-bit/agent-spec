@@ -60,6 +60,8 @@ Humans define "what is correct" (Contract). Machines verify "is the code correct
 | `agent-spec verify <spec> --code .` | Raw verification only | When you want verify without lint gate |
 | `agent-spec checkpoint status` | VCS-aware status | Check uncommitted state |
 
+**Non-Rust projects (report mode):** if the spec's frontmatter declares `test_command` + `test_report`, `verify`/`lifecycle` run that command once (the project's own test runner — vitest, jest, Maven, Gradle, pytest, ...) and judge scenarios from the JUnit XML report it writes, instead of running `cargo test`. Selectors bind to report testcase names (exact or suffix match; for vitest, use the `it` title). Zero matches, ambiguous matches, skipped testcases, and a missing report file are all `fail`. Everything else in this workflow is unchanged.
+
 ## Documentation
 
 Refer to the local files for detailed command patterns:
