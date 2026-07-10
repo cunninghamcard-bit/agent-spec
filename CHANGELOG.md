@@ -21,6 +21,14 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Fixed
 
+- **Guard boundary semantics.** `guard` now runs boundary verification in
+  forbidden-only mode: `Forbidden` entries are enforced repo-wide, while
+  `Allowed Changes` coverage (task-scoped by nature) only gates single-spec
+  `verify`/`lifecycle`. Previously any real change set failed every
+  historical spec whose allow-list didn't cover it.
+- Git repo-root discovery no longer falls back to the process cwd when
+  neither `--code` nor the spec path is inside a repository — the change
+  set is empty instead of borrowed from an unrelated repo.
 - Boundary checks now treat bare manifest filenames (`Cargo.toml`,
   `Cargo.lock`, `*.md`) as path boundaries, and relativize absolute change
   paths against the canonicalized workspace root before matching — both

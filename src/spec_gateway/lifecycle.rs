@@ -201,6 +201,40 @@ impl SpecGateway {
         ai_mode: AiMode,
         ai: AiVerifier,
     ) -> SpecResult<VerificationReport> {
+        self.run_verify_with_boundaries(
+            code_paths,
+            change_paths,
+            ai_mode,
+            ai,
+            BoundariesVerifier::default(),
+        )
+    }
+
+    /// Repo-wide guard verification: boundary checks enforce `Forbidden`
+    /// entries only, since `Allowed Changes` lists are scoped to the task a
+    /// spec described, not to every future change set.
+    pub fn verify_for_guard(
+        &self,
+        code_path: impl AsRef<Path>,
+        change_paths: &[PathBuf],
+    ) -> SpecResult<VerificationReport> {
+        self.run_verify_with_boundaries(
+            vec![code_path.as_ref().to_path_buf()],
+            change_paths.to_vec(),
+            AiMode::Off,
+            AiVerifier::from_mode(AiMode::Off),
+            BoundariesVerifier::forbidden_only(),
+        )
+    }
+
+    fn run_verify_with_boundaries(
+        &self,
+        code_paths: Vec<PathBuf>,
+        change_paths: Vec<PathBuf>,
+        ai_mode: AiMode,
+        ai: AiVerifier,
+        boundaries: BoundariesVerifier,
+    ) -> SpecResult<VerificationReport> {
         let ctx = VerificationContext {
             code_paths,
             change_paths,
@@ -209,7 +243,6 @@ impl SpecGateway {
         };
 
         let structural = StructuralVerifier;
-        let boundaries = BoundariesVerifier;
         let test = TestVerifier;
         let complexity = ComplexityVerifier;
         let verifiers: Vec<&dyn Verifier> = vec![&structural, &boundaries, &test, &ai, &complexity];

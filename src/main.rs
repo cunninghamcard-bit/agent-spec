@@ -574,7 +574,7 @@ fn cmd_verify(
     };
 
     let structural = crate::spec_verify::StructuralVerifier;
-    let boundaries = crate::spec_verify::BoundariesVerifier;
+    let boundaries = crate::spec_verify::BoundariesVerifier::default();
     let test = crate::spec_verify::TestVerifier;
     let ai = crate::spec_verify::AiVerifier::from_mode(ai_mode);
     let verifiers: Vec<&dyn crate::spec_verify::Verifier> =
@@ -624,7 +624,7 @@ fn build_matrix_for(
         resolved_spec: resolved.clone(),
     };
     let structural = crate::spec_verify::StructuralVerifier;
-    let boundaries = crate::spec_verify::BoundariesVerifier;
+    let boundaries = crate::spec_verify::BoundariesVerifier::default();
     let test = crate::spec_verify::TestVerifier;
     let ai = crate::spec_verify::AiVerifier::from_mode(mode);
     let verifiers: Vec<&dyn crate::spec_verify::Verifier> =
@@ -1449,8 +1449,9 @@ fn cmd_guard(
             errors.push(format!("{}: {}", spec_file.display(), failure,));
         }
 
-        // Verify check (only structural — fast enough for pre-commit)
-        match gw.verify_with_changes(code, &effective_changes) {
+        // Verify check. Boundary verification runs forbidden-only here:
+        // Allowed Changes lists are task-scoped, not repo-wide gates.
+        match gw.verify_for_guard(code, &effective_changes) {
             Ok(report) => {
                 if !gw.is_passing(&report) {
                     errors.push(format!(

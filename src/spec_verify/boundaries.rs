@@ -10,7 +10,24 @@ use super::{VerificationContext, Verifier};
 ///
 /// This verifier only runs when callers provide an explicit `change_paths` set.
 /// It does not infer diffs from VCS state.
-pub struct BoundariesVerifier;
+#[derive(Default)]
+pub struct BoundariesVerifier {
+    forbidden_only: bool,
+}
+
+impl BoundariesVerifier {
+    /// Repo-wide guard mode: enforce only `Forbidden` boundaries.
+    ///
+    /// `Allowed Changes` lists are task-scoped — they constrain the task
+    /// being implemented, not every future change to the repository — so
+    /// the allowed-coverage check only makes sense for single-spec
+    /// `verify`/`lifecycle` runs.
+    pub fn forbidden_only() -> Self {
+        Self {
+            forbidden_only: true,
+        }
+    }
+}
 
 impl Verifier for BoundariesVerifier {
     fn name(&self) -> &str {
@@ -70,7 +87,15 @@ impl Verifier for BoundariesVerifier {
                 continue;
             }
 
-            if !allowed.is_empty() {
+            if self.forbidden_only {
+                step_results.push(StepVerdict {
+                    step_text: change.clone(),
+                    verdict: Verdict::Pass,
+                    reason:
+                        "outside this task's allowed list; guard enforces forbidden boundaries only"
+                            .into(),
+                });
+            } else if !allowed.is_empty() {
                 has_failure = true;
                 step_results.push(StepVerdict {
                     step_text: change.clone(),
@@ -332,7 +357,7 @@ name: "边界"
         )
         .unwrap();
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],
@@ -361,7 +386,7 @@ name: "边界"
         )
         .unwrap();
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],
@@ -398,7 +423,7 @@ name: "边界"
         )
         .unwrap();
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],
@@ -414,6 +439,88 @@ name: "边界"
             results[0].step_results[0]
                 .reason
                 .contains("matches forbidden boundary")
+        );
+    }
+
+    const SCOPED_ALLOWED_SPEC: &str = r#"spec: task
+name: "边界"
+---
+
+## 边界
+
+### 允许修改
+- crates/other/**
+
+### 禁止做
+- tests/golden/**
+"#;
+
+    #[test]
+    fn test_guard_boundaries_ignore_allowed_coverage() {
+        let resolved = make_resolved_spec(SCOPED_ALLOWED_SPEC).unwrap();
+
+        let verifier = BoundariesVerifier::forbidden_only();
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![PathBuf::from("src/lib.rs")],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Pass);
+        assert!(
+            results[0].step_results[0]
+                .reason
+                .contains("guard enforces forbidden boundaries only")
+        );
+    }
+
+    #[test]
+    fn test_guard_boundaries_still_enforce_forbidden() {
+        let resolved = make_resolved_spec(SCOPED_ALLOWED_SPEC).unwrap();
+
+        let verifier = BoundariesVerifier::forbidden_only();
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![PathBuf::from("tests/golden/a.txt")],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Fail);
+        assert!(
+            results[0].step_results[0]
+                .reason
+                .contains("matches forbidden boundary")
+        );
+    }
+
+    #[test]
+    fn test_single_spec_boundaries_keep_allowed_coverage() {
+        let resolved = make_resolved_spec(SCOPED_ALLOWED_SPEC).unwrap();
+
+        let verifier = BoundariesVerifier::default();
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![PathBuf::from("src/lib.rs")],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Fail);
+        assert!(
+            results[0].step_results[0]
+                .reason
+                .contains("not covered by any allowed boundary")
         );
     }
 
@@ -434,7 +541,7 @@ name: "边界"
         )
         .unwrap();
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],
@@ -470,7 +577,7 @@ name: "边界"
             .unwrap()
             .join("src/main.rs");
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],
@@ -509,7 +616,7 @@ name: "边界"
             all_scenarios: Vec::new(),
         };
 
-        let verifier = BoundariesVerifier;
+        let verifier = BoundariesVerifier::default();
         let results = verifier
             .verify(&VerificationContext {
                 code_paths: vec![PathBuf::from(".")],

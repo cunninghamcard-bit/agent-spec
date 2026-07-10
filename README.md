@@ -227,6 +227,8 @@ cargo run -q --bin agent-spec -- guard --spec-dir specs --code .
 
 `guard` is intended for pre-commit / CI use. It lints all specs in `specs/` and verifies them against the current change set.
 
+Boundary checks run in **forbidden-only** mode under `guard`: `Forbidden` entries from every spec are enforced repo-wide, while `Allowed Changes` coverage is task-scoped and only gates single-spec `verify`/`lifecycle` runs.
+
 ### 5. Contract Acceptance (replaces Code Review)
 
 ```bash
