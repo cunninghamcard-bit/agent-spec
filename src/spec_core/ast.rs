@@ -111,6 +111,18 @@ pub enum Section {
         items: Vec<String>,
         span: Span,
     },
+    /// SDD: where the code stands before this task. Informational prose;
+    /// never affects verification.
+    CurrentState {
+        content: String,
+        span: Span,
+    },
+    /// SDD: ASCII interface/layout sketches. Informational prose;
+    /// never affects verification.
+    UxShape {
+        content: String,
+        span: Span,
+    },
 }
 
 /// A single constraint line.

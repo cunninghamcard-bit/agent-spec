@@ -504,11 +504,12 @@ impl SpecLinter for ScenarioPresenceLinter {
             return vec![LintDiagnostic {
                 rule: "scenario-presence".into(),
                 severity: Severity::Error,
-                message: "task spec is missing an Acceptance Criteria / Completion Criteria section"
-                    .into(),
+                message:
+                    "task spec is missing an Acceptance Criteria / Completion Criteria section"
+                        .into(),
                 span: crate::spec_core::Span::line(0),
                 suggestion: Some(
-                    "add `## 验收标准` / `## Completion Criteria` with at least one `场景:` / `Scenario:` block".into(),
+                    "add `## Completion Criteria` with at least one `Scenario:` block".into(),
                 ),
             }];
         }
@@ -538,6 +539,110 @@ impl SpecLinter for ScenarioPresenceLinter {
 // =============================================================================
 // 9. SycophancyLinter
 // =============================================================================
+
+// =============================================================================
+// SDD linters: needs-clarification (error) and open-questions (warning)
+// =============================================================================
+
+/// Errors on unresolved `[NEEDS CLARIFICATION` markers anywhere in the spec's
+/// text. A contract must resolve every ambiguity before it can pass the gate.
+pub struct NeedsClarificationLinter;
+
+const NEEDS_CLARIFICATION_MARKER: &str = "[NEEDS CLARIFICATION";
+
+impl SpecLinter for NeedsClarificationLinter {
+    fn name(&self) -> &str {
+        "needs-clarification"
+    }
+
+    fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
+        let mut diags = Vec::new();
+
+        let mut check = |text: &str, span: &crate::spec_core::Span| {
+            if text.contains(NEEDS_CLARIFICATION_MARKER) {
+                diags.push(LintDiagnostic {
+                    rule: "needs-clarification".into(),
+                    severity: Severity::Error,
+                    message: "unresolved [NEEDS CLARIFICATION] marker".into(),
+                    span: *span,
+                    suggestion: Some(
+                        "resolve the ambiguity and remove the marker before implementation".into(),
+                    ),
+                });
+            }
+        };
+
+        for section in &doc.sections {
+            match section {
+                Section::Intent { content, span }
+                | Section::CurrentState { content, span }
+                | Section::UxShape { content, span } => check(content, span),
+                Section::Decisions { items, span } | Section::OutOfScope { items, span } => {
+                    for item in items {
+                        check(item, span);
+                    }
+                }
+                Section::Questions { items, span } => {
+                    for item in items {
+                        check(item, span);
+                    }
+                }
+                Section::Constraints { items, span } => {
+                    for item in items {
+                        check(&item.text, span);
+                    }
+                }
+                Section::Boundaries { items, span } => {
+                    for item in items {
+                        check(&item.text, span);
+                    }
+                }
+                Section::AcceptanceCriteria { scenarios, .. } => {
+                    for scenario in scenarios {
+                        check(&scenario.name, &scenario.span);
+                        for step in &scenario.steps {
+                            check(&step.text, &step.span);
+                        }
+                    }
+                }
+            }
+        }
+
+        diags
+    }
+}
+
+/// Warns when a Questions / Open Questions section still lists unresolved
+/// bullet items. Prose such as "None." produces no items and stays quiet.
+pub struct OpenQuestionsLinter;
+
+impl SpecLinter for OpenQuestionsLinter {
+    fn name(&self) -> &str {
+        "open-questions"
+    }
+
+    fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
+        let mut diags = Vec::new();
+
+        for section in &doc.sections {
+            if let Section::Questions { items, span } = section
+                && !items.is_empty()
+            {
+                diags.push(LintDiagnostic {
+                    rule: "open-questions".into(),
+                    severity: Severity::Warning,
+                    message: format!("{} open question(s) still unresolved", items.len()),
+                    span: *span,
+                    suggestion: Some(
+                        "answer each question (moving durable answers into Decisions) or replace the list with `None.`".into(),
+                    ),
+                });
+            }
+        }
+
+        diags
+    }
+}
 
 pub struct SycophancyLinter;
 
@@ -2342,6 +2447,91 @@ fn truncate_bdd(s: &str, max: usize) -> String {
 mod tests {
     use super::*;
     use crate::spec_parser::parse_spec_from_str;
+
+    #[test]
+    fn test_lint_needs_clarification_marker_is_error() {
+        let spec = r#"spec: task
+name: "sdd lint"
+---
+
+## Intent
+
+Add login. [NEEDS CLARIFICATION: which auth flow]
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        let diags = NeedsClarificationLinter.lint(&doc);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].rule, "needs-clarification");
+        assert_eq!(diags[0].severity, Severity::Error);
+
+        // Error-level diagnostics gate lifecycle via the pipeline report.
+        let report = crate::spec_lint::LintPipeline::with_defaults().run(&doc);
+        assert!(report.has_errors());
+    }
+
+    #[test]
+    fn test_lint_open_questions_items_warn() {
+        let spec = r#"spec: task
+name: "sdd lint"
+---
+
+## Intent
+
+Add login.
+
+## Open Questions
+
+- which auth flow do we standardize on?
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        let diags = OpenQuestionsLinter.lint(&doc);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].rule, "open-questions");
+        assert_eq!(diags[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_lint_resolved_questions_none_is_quiet() {
+        let spec = r#"spec: task
+name: "sdd lint"
+---
+
+## Intent
+
+Add login.
+
+## Open Questions
+
+None.
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        assert!(OpenQuestionsLinter.lint(&doc).is_empty());
+        assert!(NeedsClarificationLinter.lint(&doc).is_empty());
+    }
 
     #[test]
     fn test_vague_verb_linter() {

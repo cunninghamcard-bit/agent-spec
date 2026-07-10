@@ -850,6 +850,8 @@ mod tests {
             out_of_scope: vec!["AI generation".into()],
             completion_criteria: Vec::new(),
             rules: vec![],
+            current_state: None,
+            ux_shape: None,
         }
     }
 
@@ -1044,6 +1046,8 @@ mod tests {
             out_of_scope: Vec::new(),
             completion_criteria: Vec::new(),
             rules: vec![],
+            current_state: None,
+            ux_shape: None,
         };
 
         let resolved = ResolvedSpec {
@@ -1213,6 +1217,8 @@ Scenario: 重复退款不重复扣减
             out_of_scope: Vec::new(),
             completion_criteria: Vec::new(),
             rules: vec![],
+            current_state: None,
+            ux_shape: None,
         };
 
         let resolved = ResolvedSpec {

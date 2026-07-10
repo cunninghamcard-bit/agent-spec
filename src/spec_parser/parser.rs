@@ -224,6 +224,26 @@ fn build_section(
                 .collect();
             Ok(Section::Questions { items, span })
         }
+        SectionKind::CurrentState => {
+            let content: String = lines
+                .iter()
+                .map(|(_, l)| *l)
+                .collect::<Vec<_>>()
+                .join("\n")
+                .trim()
+                .to_string();
+            Ok(Section::CurrentState { content, span })
+        }
+        SectionKind::UxShape => {
+            let content: String = lines
+                .iter()
+                .map(|(_, l)| *l)
+                .collect::<Vec<_>>()
+                .join("\n")
+                .trim()
+                .to_string();
+            Ok(Section::UxShape { content, span })
+        }
     }
 }
 
@@ -1876,6 +1896,97 @@ Scenario: 默认自动审核
 
     fn parse_err_msg(input: &str) -> String {
         parse_spec_from_str(input).unwrap_err().to_string()
+    }
+
+    #[test]
+    fn test_parser_accepts_current_state_section() {
+        let spec = r#"spec: task
+name: "sdd"
+---
+
+## Intent
+
+Add a thing.
+
+## Current State
+
+The verifier only runs cargo test today.
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = parse_spec_from_str(spec).unwrap();
+        let found = doc.sections.iter().find_map(|s| match s {
+            Section::CurrentState { content, .. } => Some(content.clone()),
+            _ => None,
+        });
+        assert_eq!(
+            found.as_deref(),
+            Some("The verifier only runs cargo test today.")
+        );
+    }
+
+    #[test]
+    fn test_parser_accepts_ux_shape_section() {
+        let spec = r#"spec: task
+name: "sdd"
+---
+
+## Intent
+
+Add a thing.
+
+## UX Shape
+
++----------------+
+| Cron Jobs      |
++----------------+
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = parse_spec_from_str(spec).unwrap();
+        let found = doc.sections.iter().find_map(|s| match s {
+            Section::UxShape { content, .. } => Some(content.clone()),
+            _ => None,
+        });
+        let content = found.unwrap();
+        assert!(content.contains("| Cron Jobs      |"), "got: {content}");
+    }
+
+    #[test]
+    fn test_parser_accepts_open_questions_header_alias() {
+        let spec = r#"spec: task
+name: "sdd"
+---
+
+## Intent
+
+Add a thing.
+
+## Open Questions
+
+- which auth flow do we standardize on?
+"#;
+        let doc = parse_spec_from_str(spec).unwrap();
+        let found = doc.sections.iter().find_map(|s| match s {
+            Section::Questions { items, .. } => Some(items.clone()),
+            _ => None,
+        });
+        assert_eq!(
+            found.unwrap(),
+            vec!["which auth flow do we standardize on?".to_string()]
+        );
     }
 
     #[test]

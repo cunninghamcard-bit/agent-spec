@@ -42,8 +42,12 @@ pub fn match_section_header(line: &str) -> Option<SectionKind> {
         Some(SectionKind::AcceptanceCriteria)
     } else if lower.starts_with("out of scope") {
         Some(SectionKind::OutOfScope)
-    } else if lower.starts_with("questions") {
+    } else if lower.starts_with("questions") || lower.starts_with("open questions") {
         Some(SectionKind::Questions)
+    } else if lower.starts_with("current state") {
+        Some(SectionKind::CurrentState)
+    } else if lower.starts_with("ux shape") {
+        Some(SectionKind::UxShape)
     } else {
         None
     }
@@ -293,6 +297,8 @@ pub enum SectionKind {
     AcceptanceCriteria,
     OutOfScope,
     Questions,
+    CurrentState,
+    UxShape,
 }
 
 /// Extract quoted parameters from step text.

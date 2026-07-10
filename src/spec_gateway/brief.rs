@@ -20,6 +20,12 @@ pub struct TaskContract {
     /// Additive; empty for specs without `Rule:` lines (render stays flat).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<BehaviorRule>,
+    /// SDD: where the code stands before this task (informational).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_state: Option<String>,
+    /// SDD: ASCII interface/layout sketches (informational).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ux_shape: Option<String>,
 }
 
 /// Legacy compatibility summary for older brief-based integrations.
@@ -88,7 +94,9 @@ impl SpecBrief {
                 Section::OutOfScope { items, .. } => {
                     out_of_scope.clone_from(items);
                 }
-                Section::Questions { .. } => {}
+                Section::Questions { .. }
+                | Section::CurrentState { .. }
+                | Section::UxShape { .. } => {}
             }
         }
 
@@ -151,7 +159,9 @@ impl SpecBrief {
                 Section::OutOfScope { items, .. } => {
                     brief.out_of_scope.clone_from(items);
                 }
-                Section::Questions { .. } => {}
+                Section::Questions { .. }
+                | Section::CurrentState { .. }
+                | Section::UxShape { .. } => {}
                 Section::AcceptanceCriteria { .. } => {}
             }
         }
@@ -252,6 +262,8 @@ impl TaskContract {
             out_of_scope: Vec::new(),
             completion_criteria: Vec::new(),
             rules: Vec::new(),
+            current_state: None,
+            ux_shape: None,
         };
 
         for section in &doc.sections {
@@ -293,6 +305,12 @@ impl TaskContract {
                 Section::OutOfScope { items, .. } => {
                     contract.out_of_scope.clone_from(items);
                 }
+                Section::CurrentState { content, .. } => {
+                    contract.current_state = Some(content.clone());
+                }
+                Section::UxShape { content, .. } => {
+                    contract.ux_shape = Some(content.clone());
+                }
                 Section::Questions { .. } => {}
             }
         }
@@ -312,6 +330,8 @@ impl TaskContract {
             out_of_scope: Vec::new(),
             completion_criteria: Vec::new(),
             rules: Vec::new(),
+            current_state: None,
+            ux_shape: None,
         };
 
         for constraint in &resolved.inherited_constraints {
@@ -357,6 +377,12 @@ impl TaskContract {
                 Section::OutOfScope { items, .. } => {
                     contract.out_of_scope.clone_from(items);
                 }
+                Section::CurrentState { content, .. } => {
+                    contract.current_state = Some(content.clone());
+                }
+                Section::UxShape { content, .. } => {
+                    contract.ux_shape = Some(content.clone());
+                }
                 Section::Questions { .. } => {}
             }
         }
@@ -368,6 +394,13 @@ impl TaskContract {
         let mut out = String::new();
         out.push_str(&format!("# Task Contract: {}\n\n", self.name));
         out.push_str(&format!("## Intent\n{}\n\n", self.intent));
+
+        if let Some(current_state) = &self.current_state {
+            out.push_str(&format!("## Current State\n{current_state}\n\n"));
+        }
+        if let Some(ux_shape) = &self.ux_shape {
+            out.push_str(&format!("## UX Shape\n{ux_shape}\n\n"));
+        }
 
         if !self.must.is_empty() {
             out.push_str("## Must\n");
@@ -543,6 +576,47 @@ fn push_constraint_into_brief(brief: &mut SpecBrief, constraint: &Constraint) {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use crate::spec_parser::parse_spec_from_str;
+
+    #[test]
+    fn test_contract_renders_current_state_and_ux_shape() {
+        let spec = r#"spec: task
+name: "sdd render"
+---
+
+## Intent
+
+Add a thing.
+
+## Current State
+
+Verification is cargo-only today.
+
+## UX Shape
+
++--------+
+| Panel  |
++--------+
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        let contract = TaskContract::from_doc(&doc);
+        assert_eq!(
+            contract.current_state.as_deref(),
+            Some("Verification is cargo-only today.")
+        );
+        let prompt = contract.to_prompt();
+        assert!(prompt.contains("## Current State"), "{prompt}");
+        assert!(prompt.contains("Verification is cargo-only today."));
+        assert!(prompt.contains("## UX Shape"));
+        assert!(prompt.contains("| Panel  |"));
+    }
 
     use super::TaskContract;
 
