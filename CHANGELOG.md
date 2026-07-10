@@ -24,6 +24,12 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Added
 
+- **`finish` — goal graduation.** The counterpart of `init`: re-verifies
+  the goal's contract (aborting with the failing summary and deleting
+  nothing otherwise), removes the consumable plan.md/tasks.md, keeps the
+  contract by default or retires the whole goal with `--retire`, and hints
+  at `promote` when durable Rules exist.
+
 - **Doc Impact Guard.** Maintained Markdown documents can declare governed
   code paths with an invisible `<!-- agent-spec:governs: <globs> -->`
   marker; `guard` warns (`documentation impact unresolved`) when governed

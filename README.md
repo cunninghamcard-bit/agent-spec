@@ -331,6 +331,14 @@ Contract anatomy for SDD work: use `## Current State` (where the code stands —
 
 When `guard` sees changes under governed paths without a matching update to the document, it prints a `documentation impact unresolved` warning (warning-level: guard's exit status is unaffected). Dates tell you a document is old — the governs edge tells you it is probably wrong. Declare governance sparingly, on load-bearing documents only.
 
+**Finishing a goal.** When a goal's contract verifies fully, graduate it:
+
+```bash
+agent-spec finish docs/features/my-goal/spec.md --code .
+```
+
+`finish` re-runs the lint + verify pipeline and aborts (deleting nothing) unless everything passes. On success it removes the consumable `plan.md` and `tasks.md`, keeps `spec.md` as the maintained contract (or removes the whole goal with `--retire`), and points at `promote` when the contract declares durable Rules. History is git's job — finish never writes archives.
+
 Rules of thumb:
 
 - **Skip SDD for trivial work.** Style fixes, copy changes, and small localized logic edits do not need a contract; prefer skipping over creating a token artifact.

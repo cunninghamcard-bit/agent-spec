@@ -249,6 +249,20 @@ enum Commands {
         #[arg(long, default_value = "text")]
         format: String,
     },
+    /// Graduate a verified goal: remove plan.md/tasks.md, keep or retire the contract
+    Finish {
+        /// Goal contract file (typically docs/<kind>/<goal>/spec.md)
+        spec: PathBuf,
+        /// Code directory
+        #[arg(long, default_value = ".")]
+        code: PathBuf,
+        /// Remove the whole goal directory instead of keeping the contract
+        #[arg(long)]
+        retire: bool,
+        /// Minimum quality score
+        #[arg(long, default_value = "0.6")]
+        min_score: f64,
+    },
     /// Git guard: lint all contract files + verify against the selected git change scope
     Guard {
         /// Spec directory to scan (repeatable)
@@ -440,6 +454,12 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         ),
         Commands::Brief { spec, format } => cmd_brief(&spec, &format),
         Commands::Contract { spec, format } => cmd_contract(&spec, &format),
+        Commands::Finish {
+            spec,
+            code,
+            retire,
+            min_score,
+        } => cmd_finish(&spec, &code, retire, min_score),
         Commands::Guard {
             spec_dir,
             code,
@@ -1423,6 +1443,83 @@ fn cmd_contract(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Err
 }
 
 // ── Guard (git pre-commit) ──────────────────────────────────────
+
+/// Graduate a verified goal package: the counterpart of `init`.
+fn cmd_finish(
+    spec: &Path,
+    code: &Path,
+    retire: bool,
+    min_score: f64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let gw = crate::spec_gateway::SpecGateway::load(spec)?;
+
+    if let Err(failure) = gw.quality_gate(min_score) {
+        return Err(format!("finish aborted, nothing deleted: {failure}").into());
+    }
+    let report = gw.verify_with_changes(code, &[])?;
+    if !gw.is_passing(&report) {
+        return Err(format!(
+            "finish aborted, nothing deleted: {}",
+            format_non_passing_summary(&report.summary)
+        )
+        .into());
+    }
+    println!(
+        "verifying contract... lifecycle passed ({}/{})",
+        report.summary.passed, report.summary.total
+    );
+
+    let parent = spec
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    if retire {
+        if spec.file_name().and_then(|n| n.to_str()) != Some("spec.md") {
+            return Err(
+                "--retire requires a goal package whose contract file is named spec.md".into(),
+            );
+        }
+        std::fs::remove_dir_all(&parent)?;
+        println!("retired {}", parent.display());
+        return Ok(());
+    }
+
+    let mut removed = 0;
+    for name in ["plan.md", "tasks.md"] {
+        let artifact = parent.join(name);
+        if artifact.is_file() {
+            std::fs::remove_file(&artifact)?;
+            println!("removed {}", artifact.display());
+            removed += 1;
+        }
+    }
+    if removed == 0 {
+        println!("no goal artifacts needed cleanup");
+    } else {
+        println!(
+            "kept {} (maintained contract; use --retire to remove the goal)",
+            spec.display()
+        );
+    }
+
+    let rule_count: usize = gw
+        .resolved()
+        .task
+        .sections
+        .iter()
+        .map(|section| match section {
+            crate::spec_core::Section::AcceptanceCriteria { rules, .. } => rules.len(),
+            _ => 0,
+        })
+        .sum();
+    if rule_count > 0 {
+        println!("next: agent-spec promote ({rule_count} rule(s) eligible)");
+    }
+
+    Ok(())
+}
 
 /// Normalize a change path to be code-root-relative with `/` separators,
 /// retrying against the canonicalized root for absolute git-derived paths.
