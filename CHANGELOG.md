@@ -24,6 +24,13 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Added
 
+- **Doc Impact Guard.** Maintained Markdown documents can declare governed
+  code paths with an invisible `<!-- agent-spec:governs: <globs> -->`
+  marker; `guard` warns (`documentation impact unresolved`) when governed
+  paths change without the document. Warning-level in this phase — exit
+  status is never affected. This repo dogfoods it: README.md governs
+  `src/main.rs`.
+
 - **DeepChat-style SDD goal packages.** `agent-spec init --kind
   feature|issue|architecture --name <goal>` creates readable Markdown under
   `docs/`: feature and architecture receive `spec.md`, `plan.md`, and

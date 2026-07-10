@@ -215,7 +215,7 @@ fn normalize_pattern(pattern: &str) -> String {
         .to_string()
 }
 
-fn path_matches_pattern(pattern: &str, path: &str) -> bool {
+pub(crate) fn path_matches_pattern(pattern: &str, path: &str) -> bool {
     let pattern_segments: Vec<&str> = pattern
         .split('/')
         .filter(|segment| !segment.is_empty())

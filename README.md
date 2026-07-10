@@ -1,5 +1,7 @@
 # agent-spec
 
+<!-- agent-spec:governs: src/main.rs -->
+
 [![Crates.io](https://img.shields.io/crates/v/agent-spec.svg)](https://crates.io/crates/agent-spec)
 [![docs.rs](https://docs.rs/agent-spec/badge.svg)](https://docs.rs/agent-spec)
 [![CI](https://github.com/ZhangHanDong/agent-spec/actions/workflows/contract-guard.yml/badge.svg)](https://github.com/ZhangHanDong/agent-spec/actions/workflows/contract-guard.yml)
@@ -320,6 +322,14 @@ agent-spec plan docs/features/my-goal/spec.md --code . --format prompt --out doc
 ```
 
 Contract anatomy for SDD work: use `## Current State` (where the code stands — spares the agent code archaeology), `## UX Shape` (ASCII interface sketches), and `## Open Questions`. A bracketed NEEDS-CLARIFICATION marker anywhere in a spec is an error-level lint — resolve every ambiguity before implementation.
+
+**Doc Impact Guard.** A maintained document can declare which code paths it governs with an invisible marker line:
+
+```markdown
+<!-- agent-spec:governs: src/agent/**, src/shared/contracts/** -->
+```
+
+When `guard` sees changes under governed paths without a matching update to the document, it prints a `documentation impact unresolved` warning (warning-level: guard's exit status is unaffected). Dates tell you a document is old — the governs edge tells you it is probably wrong. Declare governance sparingly, on load-bearing documents only.
 
 Rules of thumb:
 

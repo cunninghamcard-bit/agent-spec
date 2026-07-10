@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 #![allow(dead_code)]
 
+mod doc_impact;
 mod spec_core;
 mod spec_gateway;
 mod spec_lint;
@@ -1423,6 +1424,25 @@ fn cmd_contract(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Err
 
 // ── Guard (git pre-commit) ──────────────────────────────────────
 
+/// Normalize a change path to be code-root-relative with `/` separators,
+/// retrying against the canonicalized root for absolute git-derived paths.
+fn normalize_change_for_docs(path: &Path, code_root: &Path) -> String {
+    let candidate = path
+        .strip_prefix(code_root)
+        .ok()
+        .or_else(|| {
+            let canonical = code_root.canonicalize().ok()?;
+            path.strip_prefix(canonical).ok()
+        })
+        .unwrap_or(path);
+    candidate
+        .to_string_lossy()
+        .replace('\\', "/")
+        .trim_start_matches("./")
+        .trim_matches('/')
+        .to_string()
+}
+
 /// Collect spec files from every given directory (flat scan, missing
 /// directories are skipped).
 fn collect_guard_spec_files(
@@ -1505,6 +1525,18 @@ fn cmd_guard(
             Err(e) => {
                 errors.push(format!("{}: verify error: {e}", spec_file.display()));
             }
+        }
+    }
+
+    // Doc Impact Guard: warning-level only, never affects exit status.
+    let governed = crate::doc_impact::collect_governed_docs(code);
+    if !governed.is_empty() {
+        let changes: Vec<String> = effective_changes
+            .iter()
+            .map(|p| normalize_change_for_docs(p, code))
+            .collect();
+        for warning in crate::doc_impact::doc_impact_warnings(&governed, &changes) {
+            eprintln!("warning: {warning}");
         }
     }
 

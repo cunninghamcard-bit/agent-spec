@@ -14,6 +14,7 @@ use crate::spec_core::{
 
 pub use ai_verifier::{AiBackend, AiVerifier, build_ai_request};
 pub use boundaries::BoundariesVerifier;
+pub(crate) use boundaries::path_matches_pattern;
 pub use complexity::ComplexityVerifier;
 pub use structural::StructuralVerifier;
 pub use test_verifier::TestVerifier;
