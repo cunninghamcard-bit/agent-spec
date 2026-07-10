@@ -228,9 +228,9 @@ enum Commands {
     },
     /// Git guard: lint all .spec/.spec.md files + verify against the selected git change scope
     Guard {
-        /// Spec directory to scan
+        /// Spec directory to scan (repeatable)
         #[arg(long, default_value = "specs")]
-        spec_dir: PathBuf,
+        spec_dir: Vec<PathBuf>,
         /// Code directory
         #[arg(long, default_value = ".")]
         code: PathBuf,
@@ -315,6 +315,9 @@ enum Commands {
         /// Scan depth: shallow (default), full (includes pub API signatures)
         #[arg(long, default_value = "shallow")]
         depth: String,
+        /// Write the rendered plan to this file (e.g. docs/features/<goal>/plan.md)
+        #[arg(long)]
+        out: Option<PathBuf>,
     },
     /// Generate a dependency graph from spec files (DOT / SVG)
     Graph {
@@ -453,7 +456,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             code,
             format,
             depth,
-        } => cmd_plan(&spec, &code, &format, &depth),
+            out,
+        } => cmd_plan(&spec, &code, &format, &depth, out.as_deref()),
         Commands::Graph { spec_dir, format } => cmd_graph(&spec_dir, &format),
     }
 }
@@ -1404,23 +1408,35 @@ fn cmd_contract(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Err
 
 // ── Guard (git pre-commit) ──────────────────────────────────────
 
+/// Collect spec files from every given directory (flat scan, missing
+/// directories are skipped).
+fn collect_guard_spec_files(
+    spec_dirs: &[PathBuf],
+) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    let mut spec_files = Vec::new();
+    for dir in spec_dirs {
+        if !dir.exists() {
+            continue;
+        }
+        for entry in std::fs::read_dir(dir)? {
+            let Ok(entry) = entry else { continue };
+            let path = entry.path();
+            if is_spec_file(&path) && !spec_files.contains(&path) {
+                spec_files.push(path);
+            }
+        }
+    }
+    Ok(spec_files)
+}
+
 fn cmd_guard(
-    spec_dir: &Path,
+    spec_dirs: &[PathBuf],
     code: &Path,
     change: &[PathBuf],
     change_scope: &str,
     min_score: f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if !spec_dir.exists() {
-        // No specs directory → nothing to guard, pass silently
-        return Ok(());
-    }
-
-    let spec_files: Vec<PathBuf> = std::fs::read_dir(spec_dir)?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| is_spec_file(p))
-        .collect();
+    let spec_files = collect_guard_spec_files(spec_dirs)?;
 
     if spec_files.is_empty() {
         return Ok(());
@@ -1430,7 +1446,11 @@ fn cmd_guard(
     warn_duplicate_spec_extensions(&spec_files);
 
     let change_scope = GitChangeScope::parse(change_scope)?;
-    let effective_changes = resolve_guard_change_paths(spec_dir, code, change, change_scope)?;
+    let first_dir = spec_dirs
+        .first()
+        .map(PathBuf::as_path)
+        .unwrap_or(Path::new("specs"));
+    let effective_changes = resolve_guard_change_paths(first_dir, code, change, change_scope)?;
     if change.is_empty() && !effective_changes.is_empty() {
         eprintln!(
             "agent-spec guard: detected {} {} change(s) from git",
@@ -2285,6 +2305,10 @@ tags: []
 
 在此描述任务目标和背景。
 
+## Current State
+
+在此描述相关代码的现状。
+
 ## Decisions
 
 - 在此写明已经确定的技术选择
@@ -2318,6 +2342,10 @@ Scenario: 异常路径
 ## Out of Scope
 
 - 不在本任务范围内的功能
+
+## Open Questions
+
+None.
 "#
         ),
     }
@@ -2402,6 +2430,10 @@ Scenario: 异常路径
 
 - Features not in scope for this task.
 - 不在本任务范围内的功能。
+
+## Open Questions
+
+None.
 "#
         ),
     }
@@ -2632,6 +2664,10 @@ tags: []
 
 Describe the task goal and context here.
 
+## Current State
+
+Describe where the relevant code stands before this task.
+
 ## Decisions
 
 - List the technical choices that are already decided
@@ -2665,6 +2701,10 @@ Scenario: Error path
 ## Out of Scope
 
 - Features not in scope for this task
+
+## Open Questions
+
+None.
 "#
         ),
     }
@@ -2898,6 +2938,7 @@ fn cmd_plan(
     code: &Path,
     format: &str,
     depth: &str,
+    out: Option<&Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let gw = crate::spec_gateway::SpecGateway::load(spec)?;
     let contract = gw.plan();
@@ -2917,7 +2958,23 @@ fn cmd_plan(
         _ => crate::spec_gateway::plan::format_plan_text(&ctx),
     };
 
-    print!("{output}");
+    if let Some(out_path) = out {
+        write_plan_output(out_path, &output)?;
+        eprintln!("plan written to {}", out_path.display());
+    } else {
+        print!("{output}");
+    }
+    Ok(())
+}
+
+/// Write rendered plan output to a file, creating parent directories.
+fn write_plan_output(path: &Path, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, content)?;
     Ok(())
 }
 
@@ -3887,6 +3944,47 @@ Scenario: Contract alias
                 .contains("Scenario: cold start falls back to bundled content before remote fetch")
         );
         assert!(example.contains("Scenario: remote fetch failure returns a stable error"));
+    }
+
+    #[test]
+    fn test_guard_collects_specs_from_multiple_dirs() {
+        let base = make_temp_dir("agent-spec-cli-multi-dir");
+        let dir_a = base.join("specs");
+        let dir_b = base.join("docs-feature-x");
+        fs::create_dir_all(&dir_a).unwrap();
+        fs::create_dir_all(&dir_b).unwrap();
+        fs::write(dir_a.join("a.spec.md"), "spec: task\nname: \"a\"\n---\n").unwrap();
+        fs::write(dir_b.join("b.spec.md"), "spec: task\nname: \"b\"\n---\n").unwrap();
+
+        let files =
+            super::collect_guard_spec_files(&[dir_a.clone(), dir_b.clone(), base.join("missing")])
+                .unwrap();
+
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().any(|f| f.ends_with("a.spec.md")));
+        assert!(files.iter().any(|f| f.ends_with("b.spec.md")));
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn test_plan_out_writes_rendered_output_to_file() {
+        let base = make_temp_dir("agent-spec-cli-plan-out");
+        let rendered = "# Plan\n\ncontract + codebase + sketch\n";
+        let out_path = base.join("docs/features/goal/plan.md");
+
+        super::write_plan_output(&out_path, rendered).unwrap();
+
+        let written = fs::read_to_string(&out_path).unwrap();
+        assert_eq!(written, rendered);
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn test_init_task_template_includes_sdd_sections() {
+        let template = super::generate_template_en("task", "demo");
+        assert!(template.contains("## Current State"), "{template}");
+        assert!(template.contains("## Open Questions"), "{template}");
+        assert!(template.contains("None."), "{template}");
     }
 
     #[test]

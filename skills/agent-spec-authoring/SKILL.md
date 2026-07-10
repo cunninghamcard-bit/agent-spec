@@ -358,6 +358,10 @@ prefer scenarios provable by Computational evidence; reserve AI-only scenarios f
 genuinely non-mechanical intent, and never let Inferential evidence default to
 pass.
 
+## SDD Conventions (goal folders)
+
+For substantial work, keep artifacts in one kebab-case folder per goal: `docs/features/<goal>/`, `docs/issues/<goal>/`, or `docs/architecture/<goal>/`. Place the contract next to the goal or in `specs/`; `guard --spec-dir` is repeatable and gates both. Use `## Current State`, `## UX Shape`, and `## Open Questions` in contracts; a bracketed NEEDS-CLARIFICATION marker is an error-level lint that blocks the gate — resolve every ambiguity before implementation. Skip SDD for trivial work; when a contract is fulfilled and stamped, promote durable rules (`agent-spec promote`) or archive the spec so `specs/` holds only active contracts.
+
 ## Spec File Structure
 
 ### Frontmatter (YAML)

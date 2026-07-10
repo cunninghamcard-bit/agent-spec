@@ -292,6 +292,33 @@ test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.ag
 
 Specs without `test_command` keep the existing cargo behavior unchanged.
 
+## SDD Workflow (goal folders)
+
+For substantial work, keep spec-driven-development artifacts in one kebab-case folder per goal (a convention adopted from DeepChat's SDD):
+
+- `docs/features/<goal>/` — new features and user-visible capabilities
+- `docs/issues/<goal>/` — complex bug fixes and regressions
+- `docs/architecture/<goal>/` — refactors, migrations, cross-module design
+
+Put the machine-verifiable contract next to the goal (e.g. `docs/features/<goal>/<goal>.spec.md`) or keep it in `specs/`. `guard --spec-dir` is repeatable, so both layouts gate together:
+
+```bash
+agent-spec guard --spec-dir specs --spec-dir docs/features/my-goal --code .
+```
+
+Draft the plan file mechanically, then refine it by hand:
+
+```bash
+agent-spec plan specs/my-goal.spec.md --code . --format prompt --out docs/features/my-goal/plan.md
+```
+
+Contract anatomy for SDD work: use `## Current State` (where the code stands — spares the agent code archaeology), `## UX Shape` (ASCII interface sketches), and `## Open Questions`. A bracketed NEEDS-CLARIFICATION marker anywhere in a spec is an error-level lint — resolve every ambiguity before implementation.
+
+Rules of thumb:
+
+- **Skip SDD for trivial work.** Style fixes, copy changes, and small localized logic edits do not need a contract; prefer skipping over creating a token artifact.
+- **Graduate completed work.** When a task's contract is fulfilled and stamped, promote durable rules to a capability spec (`agent-spec promote`) or archive the task spec; `specs/` should hold active contracts, not history. History lives in git.
+
 ## Boundaries And Change Sets
 
 `Boundaries` can contain both natural-language constraints and path constraints. Path-like entries are mechanically enforced against a change set.

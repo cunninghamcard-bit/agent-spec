@@ -19,6 +19,15 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Added
 
+- **SDD integration (DeepChat-inspired).** New contract sections
+  `## Current State` and `## UX Shape` (informational, rendered in the
+  contract view) and an `## Open Questions` alias for Questions. New lints:
+  `needs-clarification` (error — an unresolved bracketed marker blocks the
+  gate) and `open-questions` (warning while items remain). CLI:
+  `guard --spec-dir` is repeatable for goal-folder layouts, `plan --out`
+  writes the rendered plan as a plan.md draft, and `init` task templates
+  scaffold the new sections.
+
 - **Report-driven verification (report mode).** Specs may declare
   `test_command` + `test_report` in the frontmatter; verification runs the
   project's own test command once via `sh -c` and judges every scenario by
