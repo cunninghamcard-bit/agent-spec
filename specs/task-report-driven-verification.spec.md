@@ -22,6 +22,7 @@ JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出�
 - 报告中标记 skipped 的 testcase 不判 pass
 - `test_command` 的退出码不直接决定场景判定；报告文件不存在时该 spec 的 report-mode 场景判 fail，错误信息包含期望的报告路径
 - `test_command` 支持可选占位符 `{selectors}`：执行前替换为该 spec 全部场景 selector 的正则交替模式（形如 `(selector_a|selector_b)`），selector 中的正则元字符以反斜杠转义；命令中不含占位符时原样执行
+- 边界校验修复（本任务门禁的前置依赖）：`Allowed Changes` 支持裸清单文件名条目（`.toml`、`.lock`、`.md` 后缀）；变更路径为绝对路径且直接剥除失败时，用规范化后的工作区根再次剥除，使其以相对路径参与边界匹配
 
 ## 边界
 
@@ -29,6 +30,7 @@ JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出�
 - src/spec_parser/meta.rs
 - src/spec_core/**
 - src/spec_verify/**
+- src/spec_gateway/plan.rs
 - Cargo.toml
 - Cargo.lock
 - tests/**
@@ -129,6 +131,22 @@ JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出�
   当 report mode 组装待执行命令
   那么 交替模式中的元字符以反斜杠转义
   并且 替换后的命令不因元字符改变匹配范围
+
+场景: 边界条目支持裸清单文件名
+  测试:
+    包: agent-spec
+    过滤: test_boundary_bare_manifest_filenames_are_path_boundaries
+  假设 Allowed Changes 含条目 "Cargo.toml"
+  当 变更集包含相对路径 "Cargo.toml"
+  那么 边界校验判定该变更被允许
+
+场景: 绝对变更路径相对化后参与边界匹配
+  测试:
+    包: agent-spec
+    过滤: test_boundary_absolute_change_paths_relativized_against_workspace_root
+  假设 变更路径是工作区根下某文件的绝对路径且工作区根以相对形式给出
+  当 边界校验规范化该变更集
+  那么 该变更以相对路径与允许模式匹配
 
 场景: 未声明 test_command 的 spec 保持 cargo 直跑行为
   测试:

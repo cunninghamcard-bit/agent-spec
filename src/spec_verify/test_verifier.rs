@@ -31,6 +31,15 @@ impl Verifier for TestVerifier {
     }
 
     fn verify(&self, ctx: &VerificationContext) -> SpecResult<Vec<ScenarioResult>> {
+        if let Some(test_command) = ctx.resolved_spec.task.meta.test_command.as_deref() {
+            let Some(test_report) = ctx.resolved_spec.task.meta.test_report.as_deref() else {
+                return Err(SpecError::Verification(
+                    "`test_command` is declared without `test_report`; add `test_report: <path to JUnit XML report>` to the front-matter".into(),
+                ));
+            };
+            return super::report_mode::run_report_mode(ctx, test_command, test_report);
+        }
+
         let Some(workspace_root) = find_workspace_root(&ctx.code_paths) else {
             return Ok(Vec::new());
         };

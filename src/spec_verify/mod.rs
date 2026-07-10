@@ -1,6 +1,7 @@
 mod ai_verifier;
 mod boundaries;
 mod complexity;
+mod report_mode;
 mod structural;
 mod test_verifier;
 
@@ -188,6 +189,8 @@ mod tests {
                         depends: vec![],
                         estimate: None,
                         capability: None,
+                        test_command: None,
+                        test_report: None,
                     },
                     sections: vec![Section::AcceptanceCriteria {
                         scenarios: vec![scenario.clone()],
@@ -271,6 +274,8 @@ mod tests {
                         depends: vec![],
                         estimate: None,
                         capability: None,
+                        test_command: None,
+                        test_report: None,
                     },
                     sections: vec![],
                     lint_acks: vec![],

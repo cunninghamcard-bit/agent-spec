@@ -240,6 +240,8 @@ mod tests {
                         depends: vec![],
                         estimate: None,
                         capability: None,
+                        test_command: None,
+                        test_report: None,
                     },
                     sections: vec![
                         Section::Intent {

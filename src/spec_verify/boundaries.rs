@@ -142,6 +142,9 @@ fn looks_like_path_boundary(text: &str) -> bool {
         || trimmed.ends_with(".py")
         || trimmed.ends_with(".spec")
         || trimmed.ends_with(".spec.md")
+        || trimmed.ends_with(".toml")
+        || trimmed.ends_with(".lock")
+        || trimmed.ends_with(".md")
 }
 
 fn normalize_change_paths(paths: &[PathBuf], workspace_root: Option<&Path>) -> Vec<String> {
@@ -158,8 +161,16 @@ fn normalize_change_paths(paths: &[PathBuf], workspace_root: Option<&Path>) -> V
 }
 
 fn normalize_path(path: &Path, workspace_root: Option<&Path>) -> String {
+    // Change discovery can yield absolute paths (git's toplevel joined with
+    // file names) while the workspace root is given relative (e.g. `--code .`);
+    // retry the strip against the canonicalized root so both shapes match.
     let candidate = workspace_root
-        .and_then(|root| path.strip_prefix(root).ok())
+        .and_then(|root| {
+            path.strip_prefix(root).ok().or_else(|| {
+                let canonical_root = root.canonicalize().ok()?;
+                path.strip_prefix(canonical_root).ok()
+            })
+        })
         .unwrap_or(path);
 
     candidate
@@ -407,6 +418,73 @@ name: "边界"
     }
 
     #[test]
+    fn test_boundary_bare_manifest_filenames_are_path_boundaries() {
+        let resolved = make_resolved_spec(
+            r#"spec: task
+name: "边界"
+---
+
+## 边界
+
+### 允许修改
+- Cargo.toml
+- Cargo.lock
+- src/**
+"#,
+        )
+        .unwrap();
+
+        let verifier = BoundariesVerifier;
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![PathBuf::from("Cargo.toml")],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Pass);
+    }
+
+    #[test]
+    fn test_boundary_absolute_change_paths_relativized_against_workspace_root() {
+        let resolved = make_resolved_spec(
+            r#"spec: task
+name: "边界"
+---
+
+## 边界
+
+### 允许修改
+- src/**
+"#,
+        )
+        .unwrap();
+
+        // Absolute path with the on-disk casing, as produced by joining
+        // git's `--show-toplevel` output with a repo-relative file name.
+        let absolute_change = PathBuf::from(".")
+            .canonicalize()
+            .unwrap()
+            .join("src/main.rs");
+
+        let verifier = BoundariesVerifier;
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![absolute_change],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Pass);
+    }
+
+    #[test]
     fn verifier_skips_when_no_explicit_change_paths_are_provided() {
         let resolved = ResolvedSpec {
             task: crate::spec_core::SpecDocument {
@@ -419,6 +497,8 @@ name: "边界"
                     depends: vec![],
                     estimate: None,
                     capability: None,
+                    test_command: None,
+                    test_report: None,
                 },
                 sections: vec![],
                 lint_acks: vec![],

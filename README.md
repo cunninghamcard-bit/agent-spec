@@ -272,6 +272,36 @@ Scenario: Duplicate email is rejected
 
 This is the default quality rule for self-hosting and new task specs. The older `// @spec:` source annotation is still accepted as a compatibility fallback, but it should not be the primary authoring path.
 
+## Report-Driven Verification (non-Rust projects)
+
+By default, scenarios are verified by running `cargo test <selector>` — which only works for Rust projects. For any other stack, declare the project's own test command in the spec front-matter and let it emit a JUnit XML report:
+
+```spec
+spec: task
+name: "Admin panel registration"
+test_command: pnpm vitest run --reporter=junit --outputFile=.agent-spec/report.xml
+test_report: .agent-spec/report.xml
+---
+```
+
+Verification then runs `test_command` once (via `sh -c`, cwd = the `--code` root), parses the report, and judges every scenario by matching its `Test:` selector against testcase names (exact match, or the testcase name ends with the selector):
+
+- testcase passed → `pass`; failed → `fail` (the failure message becomes evidence)
+- selector matches **zero** testcases → `fail` (no hollow passes)
+- selector matches multiple testcases → `fail`, listing the candidates
+- testcase skipped → `fail` (a skipped test does not satisfy a contract)
+- report file missing after the command ran → `fail` with the expected path
+
+Any framework that can emit JUnit XML works the same way: vitest/jest (`--reporter=junit`), Maven/Gradle (native), pytest (`--junitxml`), cargo-nextest, go (gotestsum). A structured selector's `Package:` filters testcases by `classname` prefix.
+
+To run only the contract-bound tests instead of the whole suite, use the `{selectors}` placeholder — it expands to a regex alternation of all scenario selectors (metacharacters escaped):
+
+```spec
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.agent-spec/report.xml
+```
+
+Specs without `test_command` keep the existing cargo behavior unchanged.
+
 ## Boundaries And Change Sets
 
 `Boundaries` can contain both natural-language constraints and path constraints. Path-like entries are mechanically enforced against a change set.

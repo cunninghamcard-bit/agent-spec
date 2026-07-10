@@ -10,6 +10,8 @@ pub fn parse_meta(lines: &[&str]) -> Result<SpecMeta, String> {
     let mut depends = Vec::new();
     let mut estimate = None;
     let mut capability = None;
+    let mut test_command = None;
+    let mut test_report = None;
 
     for line in lines {
         let trimmed = line.trim();
@@ -81,6 +83,18 @@ pub fn parse_meta(lines: &[&str]) -> Result<SpecMeta, String> {
                     capability = Some(v.to_string());
                 }
             }
+            "test_command" => {
+                let v = value.trim();
+                if !v.is_empty() {
+                    test_command = Some(v.to_string());
+                }
+            }
+            "test_report" => {
+                let v = value.trim();
+                if !v.is_empty() {
+                    test_report = Some(v.to_string());
+                }
+            }
             _ => {} // ignore unknown keys
         }
     }
@@ -98,6 +112,8 @@ pub fn parse_meta(lines: &[&str]) -> Result<SpecMeta, String> {
         depends,
         estimate,
         capability,
+        test_command,
+        test_report,
     })
 }
 

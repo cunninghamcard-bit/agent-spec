@@ -38,6 +38,13 @@ pub struct SpecMeta {
     /// specs that declare no `capability:`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capability: Option<String>,
+    /// Report mode: the project's own test command, run once per verification.
+    /// May contain the `{selectors}` placeholder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_command: Option<String>,
+    /// Report mode: JUnit XML report path, relative to the code root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_report: Option<String>,
 }
 
 /// An author's deliberate waiver of a lint rule, recorded inline as
