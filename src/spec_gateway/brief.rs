@@ -623,38 +623,38 @@ Scenario: ok
     #[test]
     fn test_contract_renders_scenarios_grouped_by_rule() {
         let input = r#"spec: task
-name: "分组渲染"
+name: "Grouped rendering"
 ---
 
 ## Completion Criteria
 
-### Rule: refund-must-be-idempotent — 退款幂等
-Scenario: 首次退款成功
+### Rule: refund-must-be-idempotent — Refund idempotency
+Scenario: First refund succeeds
   Test: t1
-  When 退款
-  Then 成功
-Scenario: 重复退款不重复扣减
+  When a refund is made
+  Then it succeeds
+Scenario: Repeated refund does not deduct twice
   Test: t2
-  When 再次退款
-  Then 不重复
+  When the refund is retried
+  Then no duplicate deduction occurs
 
-### Rule: refund-amount-cap — 退款不超原额
-Scenario: 超额退款被拒
+### Rule: refund-amount-cap — Refund never exceeds the original amount
+Scenario: Over-amount refund is rejected
   Test: t3
-  When 超额退款
-  Then 拒绝
+  When an over-amount refund is made
+  Then it is rejected
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let contract = TaskContract::from_doc(&doc);
         let out = contract.to_prompt();
 
         // Grouped: each Rule header precedes its own scenarios.
-        assert!(out.contains("Rule: refund-must-be-idempotent — 退款幂等"));
-        assert!(out.contains("Rule: refund-amount-cap — 退款不超原额"));
+        assert!(out.contains("Rule: refund-must-be-idempotent — Refund idempotency"));
+        assert!(out.contains("Rule: refund-amount-cap — Refund never exceeds the original amount"));
         let idem_pos = out.find("refund-must-be-idempotent").unwrap();
         let cap_pos = out.find("refund-amount-cap").unwrap();
-        let s_first = out.find("首次退款成功").unwrap();
-        let s_third = out.find("超额退款被拒").unwrap();
+        let s_first = out.find("First refund succeeds").unwrap();
+        let s_third = out.find("Over-amount refund is rejected").unwrap();
         // First rule's scenarios appear after its header and before the 2nd rule.
         assert!(idem_pos < s_first && s_first < cap_pos);
         assert!(cap_pos < s_third);
@@ -663,16 +663,16 @@ Scenario: 超额退款被拒
     #[test]
     fn test_legacy_contract_without_rule_stays_flat() {
         let input = r#"spec: task
-name: "扁平"
+name: "Flat"
 ---
 
 ## Completion Criteria
 
-Scenario: 一
+Scenario: One
   Test: t1
   When a
   Then b
-Scenario: 二
+Scenario: Two
   Test: t2
   When a
   Then b
@@ -682,7 +682,7 @@ Scenario: 二
         let out = contract.to_prompt();
         // No Rule headers when there are no rules.
         assert!(!out.contains("Rule:"));
-        assert!(out.contains("Scenario: 一"));
-        assert!(out.contains("Scenario: 二"));
+        assert!(out.contains("Scenario: One"));
+        assert!(out.contains("Scenario: Two"));
     }
 }

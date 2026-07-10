@@ -125,7 +125,7 @@ mod tests {
             _ctx: &VerificationContext,
         ) -> crate::spec_core::SpecResult<Vec<ScenarioResult>> {
             Ok(vec![ScenarioResult {
-                scenario_name: "同一场景".into(),
+                scenario_name: "Same scenario".into(),
                 verdict: Verdict::Pass,
                 step_results: vec![],
                 evidence: vec![],
@@ -145,7 +145,7 @@ mod tests {
             _ctx: &VerificationContext,
         ) -> crate::spec_core::SpecResult<Vec<ScenarioResult>> {
             Ok(vec![ScenarioResult {
-                scenario_name: "同一场景".into(),
+                scenario_name: "Same scenario".into(),
                 verdict: Verdict::Uncertain,
                 step_results: vec![],
                 evidence: vec![],
@@ -158,10 +158,10 @@ mod tests {
     #[test]
     fn run_verification_keeps_first_result_for_same_scenario() {
         let scenario = Scenario {
-            name: "同一场景".into(),
+            name: "Same scenario".into(),
             steps: vec![Step {
                 kind: StepKind::Given,
-                text: "前置条件".into(),
+                text: "a precondition".into(),
                 params: vec![],
                 table: vec![],
                 span: Span::line(1),
@@ -230,7 +230,7 @@ mod tests {
             _ctx: &VerificationContext,
         ) -> crate::spec_core::SpecResult<Vec<ScenarioResult>> {
             Ok(vec![ScenarioResult {
-                scenario_name: "机械场景".into(),
+                scenario_name: "Mechanical scenario".into(),
                 verdict: Verdict::Pass,
                 step_results: vec![],
                 evidence: vec![],
@@ -249,7 +249,7 @@ mod tests {
             _ctx: &VerificationContext,
         ) -> crate::spec_core::SpecResult<Vec<ScenarioResult>> {
             Ok(vec![ScenarioResult {
-                scenario_name: "推理场景".into(),
+                scenario_name: "Inferential scenario".into(),
                 verdict: Verdict::Uncertain,
                 step_results: vec![],
                 evidence: vec![],

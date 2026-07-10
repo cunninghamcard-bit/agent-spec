@@ -328,6 +328,8 @@ mod tests {
         }
     }
 
+    // deliberate Chinese fixture: exercises the Chinese line-ratio pattern and
+    // quoted-number extraction inside Chinese prose (see parse_line_ratio).
     fn line_ratio_constraint(ratio: &str) -> Constraint {
         Constraint {
             text: format!("新增代码行数不应超过删除行数的 \"{ratio}\" 倍"),

@@ -7,21 +7,21 @@
 /// `Test:`), placeholder steps, and a `## Questions` seed.
 pub fn draft_spec_from_tests(test_names: &[String], spec_name: &str) -> String {
     let mut out = format!(
-        "spec: task\nname: \"{spec_name}\"\n---\n\n## Intent\n\n[由 discover 自动草拟] 为现有测试反向补齐 Task Contract;请人工细化意图。\n\n## Completion Criteria\n\n"
+        "spec: task\nname: \"{spec_name}\"\n---\n\n## Intent\n\n[drafted by discover] Reverse-engineered Task Contract from existing tests; refine the intent by hand.\n\n## Completion Criteria\n\n"
     );
     if test_names.is_empty() {
         out.push_str(
-            "Scenario: 占位场景\n  When [待人工填写触发动作]\n  Then [待人工填写可观察结果]\n",
+            "Scenario: Placeholder scenario\n  When [fill in the triggering action]\n  Then [fill in the observable result]\n",
         );
     } else {
         for t in test_names {
             out.push_str(&format!(
-                "Scenario: {t}\n  Test: {t}\n  When [待人工填写触发动作]\n  Then [待人工填写可观察结果]\n\n"
+                "Scenario: {t}\n  Test: {t}\n  When [fill in the triggering action]\n  Then [fill in the observable result]\n\n"
             ));
         }
     }
     out.push_str(
-        "## Questions\n\n- 这些 scenario 由 discover 从测试名自动草拟,需人工细化每个 scenario 的意图、Given/When/Then 与可观察结果\n- 是否应把相关 scenario 归入 Rule 分组?\n",
+        "## Questions\n\n- These scenarios were drafted by discover from test names; refine each scenario's intent, Given/When/Then, and observable result by hand\n- Should related scenarios be grouped under a Rule?\n",
     );
     out
 }
@@ -74,7 +74,7 @@ mod tests {
     fn test_draft_includes_questions_seed() {
         let d = draft_spec_from_tests(&["test_a".into()], "drafted");
         assert!(d.contains("## Questions"));
-        assert!(d.contains("自动草拟"));
+        assert!(d.contains("drafted by discover"));
     }
 
     #[test]

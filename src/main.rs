@@ -878,13 +878,11 @@ fn promote_gate_ok(
 }
 
 /// Whether a capability spec already declares a Completion Criteria section.
+/// CJK headers are not checked: files using them no longer parse at all.
 fn has_completion_section(content: &str) -> bool {
     content.lines().any(|l| {
         let t = l.trim().trim_start_matches('#').trim().to_lowercase();
-        t.starts_with("完成条件")
-            || t.starts_with("验收标准")
-            || t.starts_with("completion criter")
-            || t.starts_with("acceptance criter")
+        t.starts_with("completion criter") || t.starts_with("acceptance criter")
     })
 }
 
@@ -920,7 +918,7 @@ fn upsert_capability_rule(
         }
         None => {
             format!(
-                "spec: capability\nname: \"{cap_name}\"\ntags: [capability]\n---\n\n## Intent\n\n{cap_name} 能力的长寿命行为真相库(由 promote 累积)。\n\n## Completion Criteria\n\n{block}\n"
+                "spec: capability\nname: \"{cap_name}\"\ntags: [capability]\n---\n\n## Intent\n\nLong-lived behavior truth library for the {cap_name} capability (accumulated by promote).\n\n## Completion Criteria\n\n{block}\n"
             )
         }
     }
@@ -2992,17 +2990,17 @@ mod tests {
     }
 
     const PROMOTE_SPEC: &str = r#"spec: task
-name: "退款"
+name: "Refund"
 ---
 
 ## Completion Criteria
 
-### Rule: r-ok — 退款幂等
-Scenario: 首次退款
+### Rule: r-ok — Refunds are idempotent
+Scenario: First refund
   Test: t1
   When a
   Then b
-Scenario: 重复退款
+Scenario: Repeated refund
   Test: t2
   When a
   Then b
@@ -3069,8 +3067,14 @@ Scenario: 重复退款
     fn test_promote_appends_under_completion_criteria() {
         // C4: appending to a capability file lacking a Completion Criteria
         // section must still place the rule where it parses as a rule.
-        let hand = "spec: capability\nname: \"billing\"\n---\n\n## Intent\n\n手写的能力文件,没有完成条件段。\n";
-        let updated = upsert_capability_rule(Some(hand), "billing", "r-ok", "退款幂等", "task-x");
+        let hand = "spec: capability\nname: \"billing\"\n---\n\n## Intent\n\nA hand-written capability file with no completion criteria section.\n";
+        let updated = upsert_capability_rule(
+            Some(hand),
+            "billing",
+            "r-ok",
+            "Refunds are idempotent",
+            "task-x",
+        );
         let doc = crate::spec_parser::parse_spec_from_str(&updated).unwrap();
         let has_rule = doc.sections.iter().any(|s| {
             matches!(s,
@@ -3095,8 +3099,8 @@ Scenario: 重复退款
         let doc = crate::spec_parser::parse_spec_from_str(PROMOTE_SPEC).unwrap();
         let names = rule_scenarios(&doc, "r-ok").unwrap();
         let report = report_with(&[
-            ("首次退款", crate::spec_core::Verdict::Pass),
-            ("重复退款", crate::spec_core::Verdict::Fail),
+            ("First refund", crate::spec_core::Verdict::Pass),
+            ("Repeated refund", crate::spec_core::Verdict::Fail),
         ]);
         assert!(
             !examples_all_pass(&names, &report),
@@ -3106,7 +3110,13 @@ Scenario: 重复退款
 
     #[test]
     fn test_promote_appends_rule_when_examples_pass() {
-        let content = upsert_capability_rule(None, "billing", "r-ok", "退款幂等", "task-refund");
+        let content = upsert_capability_rule(
+            None,
+            "billing",
+            "r-ok",
+            "Refunds are idempotent",
+            "task-refund",
+        );
         // Re-parse the generated capability spec: rule present with Capability scope.
         let doc = crate::spec_parser::parse_spec_from_str(&content).unwrap();
         assert_eq!(doc.meta.level, crate::spec_core::SpecLevel::Capability);
@@ -3129,9 +3139,20 @@ Scenario: 重复退款
 
     #[test]
     fn test_promote_is_idempotent_for_same_rule() {
-        let first = upsert_capability_rule(None, "billing", "r-ok", "退款幂等", "task-refund");
-        let second =
-            upsert_capability_rule(Some(&first), "billing", "r-ok", "退款幂等", "task-refund");
+        let first = upsert_capability_rule(
+            None,
+            "billing",
+            "r-ok",
+            "Refunds are idempotent",
+            "task-refund",
+        );
+        let second = upsert_capability_rule(
+            Some(&first),
+            "billing",
+            "r-ok",
+            "Refunds are idempotent",
+            "task-refund",
+        );
         assert_eq!(first, second, "re-promoting the same rule must be a no-op");
         // r-ok appears exactly once.
         assert_eq!(second.matches("Rule: r-ok").count(), 1);
@@ -3141,12 +3162,18 @@ Scenario: 重复退款
     fn test_promote_does_not_change_is_passing() {
         let gw = crate::spec_gateway::SpecGateway::from_input(PROMOTE_SPEC).unwrap();
         let report = report_with(&[
-            ("首次退款", crate::spec_core::Verdict::Pass),
-            ("重复退款", crate::spec_core::Verdict::Pass),
+            ("First refund", crate::spec_core::Verdict::Pass),
+            ("Repeated refund", crate::spec_core::Verdict::Pass),
         ]);
         let before = report.summary.clone();
         let passing_before = gw.is_passing(&report);
-        let _ = upsert_capability_rule(None, "billing", "r-ok", "退款幂等", "task-refund");
+        let _ = upsert_capability_rule(
+            None,
+            "billing",
+            "r-ok",
+            "Refunds are idempotent",
+            "task-refund",
+        );
         assert_eq!(passing_before, gw.is_passing(&report));
         assert_eq!(before.total, report.summary.total);
     }
@@ -3166,7 +3193,7 @@ Scenario: 重复退款
         let spec_path = dir.join("m.spec.md");
         fs::write(
             &spec_path,
-            "spec: task\nname: \"m\"\n---\n\n## Completion Criteria\n\nScenario: 未覆盖\n  When a\n  Then b\n",
+            "spec: task\nname: \"m\"\n---\n\n## Completion Criteria\n\nScenario: Uncovered\n  When a\n  Then b\n",
         )
         .unwrap();
 
@@ -3194,7 +3221,7 @@ Scenario: 重复退款
         let matrix = CoverageMatrix {
             rows: vec![CoverageRow {
                 rule: Some("refund-idempotent".into()),
-                scenario: "首次退款".into(),
+                scenario: "First refund".into(),
                 test_selector: Some("test_first_refund".into()),
                 test_found: TestFound::Found,
                 verdict: Some(crate::spec_core::Verdict::Pass),
@@ -3218,7 +3245,7 @@ Scenario: 重复退款
         use crate::spec_core::{AiDecision, ScenarioResult, Verdict};
         let results = vec![
             ScenarioResult {
-                scenario_name: "已通过".into(),
+                scenario_name: "Already passed".into(),
                 verdict: Verdict::Pass,
                 step_results: vec![],
                 evidence: vec![],
@@ -3226,7 +3253,7 @@ Scenario: 重复退款
                 provenance: Some(crate::spec_core::EvidenceProvenance::Computational),
             },
             ScenarioResult {
-                scenario_name: "未覆盖".into(),
+                scenario_name: "Uncovered".into(),
                 verdict: Verdict::Skip,
                 step_results: vec![],
                 evidence: vec![],
@@ -3236,7 +3263,7 @@ Scenario: 重复退款
         ];
         let decisions = vec![
             ScenarioAiDecision {
-                scenario_name: "已通过".into(),
+                scenario_name: "Already passed".into(),
                 decision: AiDecision {
                     model: "caller".into(),
                     confidence: 0.1,
@@ -3245,7 +3272,7 @@ Scenario: 重复退款
                 },
             },
             ScenarioAiDecision {
-                scenario_name: "未覆盖".into(),
+                scenario_name: "Uncovered".into(),
                 decision: AiDecision {
                     model: "caller".into(),
                     confidence: 0.9,
@@ -3255,7 +3282,10 @@ Scenario: 重复退款
             },
         ];
         let merged = merge_ai_decisions(results, &decisions);
-        let passed = merged.iter().find(|r| r.scenario_name == "已通过").unwrap();
+        let passed = merged
+            .iter()
+            .find(|r| r.scenario_name == "Already passed")
+            .unwrap();
         assert_eq!(
             passed.verdict,
             Verdict::Pass,
@@ -3266,7 +3296,10 @@ Scenario: 重复退款
             Some(crate::spec_core::EvidenceProvenance::Computational),
             "mechanical provenance must be preserved"
         );
-        let skip = merged.iter().find(|r| r.scenario_name == "未覆盖").unwrap();
+        let skip = merged
+            .iter()
+            .find(|r| r.scenario_name == "Uncovered")
+            .unwrap();
         assert_eq!(skip.verdict, Verdict::Pass, "skip must be resolved by AI");
         assert_eq!(
             skip.provenance,
@@ -3280,10 +3313,10 @@ Scenario: 重复退款
             AiDecision, Evidence, EvidenceProvenance, ScenarioResult, StepVerdict, Verdict,
         };
         let results = vec![ScenarioResult {
-            scenario_name: "未覆盖场景".into(),
+            scenario_name: "Uncovered scenario".into(),
             verdict: Verdict::Skip,
             step_results: vec![StepVerdict {
-                step_text: "等待 AI".into(),
+                step_text: "waiting for AI".into(),
                 verdict: Verdict::Skip,
                 reason: "no verifier".into(),
             }],
@@ -3292,7 +3325,7 @@ Scenario: 重复退款
             provenance: None,
         }];
         let decisions = vec![ScenarioAiDecision {
-            scenario_name: "未覆盖场景".into(),
+            scenario_name: "Uncovered scenario".into(),
             decision: AiDecision {
                 model: "caller".into(),
                 confidence: 0.9,
@@ -4593,7 +4626,7 @@ Scenario: verification metadata stays visible
     #[test]
     fn test_scenario_ai_decision_serialization_roundtrip() {
         let decision = super::ScenarioAiDecision {
-            scenario_name: "AI 场景".into(),
+            scenario_name: "AI scenario".into(),
             decision: crate::spec_core::AiDecision {
                 model: "claude-agent".into(),
                 confidence: 0.92,
@@ -4608,7 +4641,7 @@ Scenario: verification metadata stays visible
         assert!(json.contains("0.92"));
 
         let parsed: super::ScenarioAiDecision = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.scenario_name, "AI 场景");
+        assert_eq!(parsed.scenario_name, "AI scenario");
         assert_eq!(parsed.decision.verdict, crate::spec_core::Verdict::Pass);
         assert_eq!(parsed.decision.model, "claude-agent");
     }
@@ -4772,31 +4805,31 @@ Scenario: pass
     fn test_resume_incremental_skips_passed_scenarios() {
         let mut scenarios = std::collections::HashMap::new();
         scenarios.insert(
-            "场景 A".to_owned(),
+            "Scenario A".to_owned(),
             crate::spec_core::CheckpointEntry {
                 verdict: crate::spec_core::Verdict::Pass,
                 vcs_ref: Some("abc123".into()),
             },
         );
         scenarios.insert(
-            "场景 B".to_owned(),
+            "Scenario B".to_owned(),
             crate::spec_core::CheckpointEntry {
                 verdict: crate::spec_core::Verdict::Fail,
                 vcs_ref: Some("abc123".into()),
             },
         );
         let checkpoint = crate::spec_core::Checkpoint {
-            spec_name: "测试".into(),
+            spec_name: "Test spec".into(),
             timestamp: 1000,
             vcs_ref: Some("abc123".into()),
             scenarios,
         };
 
         let report = crate::spec_core::VerificationReport::from_results(
-            "测试".into(),
+            "Test spec".into(),
             vec![
-                make_scenario_result("场景 A", crate::spec_core::Verdict::Skip),
-                make_scenario_result("场景 B", crate::spec_core::Verdict::Fail),
+                make_scenario_result("Scenario A", crate::spec_core::Verdict::Skip),
+                make_scenario_result("Scenario B", crate::spec_core::Verdict::Fail),
             ],
         );
 
@@ -4805,7 +4838,7 @@ Scenario: pass
         let a = merged
             .results
             .iter()
-            .find(|r| r.scenario_name == "场景 A")
+            .find(|r| r.scenario_name == "Scenario A")
             .unwrap();
         assert_eq!(a.verdict, crate::spec_core::Verdict::Pass);
         let has_checkpoint_evidence = a.evidence.iter().any(|e| match e {
@@ -4820,7 +4853,7 @@ Scenario: pass
         let b = merged
             .results
             .iter()
-            .find(|r| r.scenario_name == "场景 B")
+            .find(|r| r.scenario_name == "Scenario B")
             .unwrap();
         assert_eq!(b.verdict, crate::spec_core::Verdict::Fail);
 
@@ -4832,23 +4865,23 @@ Scenario: pass
     fn test_resume_conservative_detects_regression() {
         let mut scenarios = std::collections::HashMap::new();
         scenarios.insert(
-            "场景 A".to_owned(),
+            "Scenario A".to_owned(),
             crate::spec_core::CheckpointEntry {
                 verdict: crate::spec_core::Verdict::Pass,
                 vcs_ref: Some("abc123".into()),
             },
         );
         let checkpoint = crate::spec_core::Checkpoint {
-            spec_name: "测试".into(),
+            spec_name: "Test spec".into(),
             timestamp: 1000,
             vcs_ref: Some("abc123".into()),
             scenarios,
         };
 
         let report = crate::spec_core::VerificationReport::from_results(
-            "测试".into(),
+            "Test spec".into(),
             vec![make_scenario_result(
-                "场景 A",
+                "Scenario A",
                 crate::spec_core::Verdict::Fail,
             )],
         );
@@ -4858,7 +4891,7 @@ Scenario: pass
         let a = merged
             .results
             .iter()
-            .find(|r| r.scenario_name == "场景 A")
+            .find(|r| r.scenario_name == "Scenario A")
             .unwrap();
         assert_eq!(a.verdict, crate::spec_core::Verdict::Fail);
         let has_regression = a.evidence.iter().any(|e| match e {
@@ -4901,11 +4934,11 @@ Scenario: pass
         let dir = make_temp_dir("checkpoint-roundtrip");
 
         let report = crate::spec_core::VerificationReport::from_results(
-            "序列化测试".into(),
+            "Serialization test".into(),
             vec![
-                make_scenario_result("场景 A", crate::spec_core::Verdict::Pass),
-                make_scenario_result("场景 B", crate::spec_core::Verdict::Fail),
-                make_scenario_result("场景 C", crate::spec_core::Verdict::Skip),
+                make_scenario_result("Scenario A", crate::spec_core::Verdict::Pass),
+                make_scenario_result("Scenario B", crate::spec_core::Verdict::Fail),
+                make_scenario_result("Scenario C", crate::spec_core::Verdict::Skip),
             ],
         );
 
@@ -4918,18 +4951,18 @@ Scenario: pass
         assert!(loaded.is_some(), "checkpoint should be loaded");
         let cp = loaded.unwrap();
 
-        assert_eq!(cp.spec_name, "序列化测试");
+        assert_eq!(cp.spec_name, "Serialization test");
         assert_eq!(cp.vcs_ref, Some("def456".into()));
         assert_eq!(cp.scenarios.len(), 3);
 
-        let entry_a = cp.scenarios.get("场景 A").unwrap();
+        let entry_a = cp.scenarios.get("Scenario A").unwrap();
         assert_eq!(entry_a.verdict, crate::spec_core::Verdict::Pass);
         assert_eq!(entry_a.vcs_ref, Some("def456".into()));
 
-        let entry_b = cp.scenarios.get("场景 B").unwrap();
+        let entry_b = cp.scenarios.get("Scenario B").unwrap();
         assert_eq!(entry_b.verdict, crate::spec_core::Verdict::Fail);
 
-        let entry_c = cp.scenarios.get("场景 C").unwrap();
+        let entry_c = cp.scenarios.get("Scenario C").unwrap();
         assert_eq!(entry_c.verdict, crate::spec_core::Verdict::Skip);
 
         let _ = fs::remove_dir_all(dir);

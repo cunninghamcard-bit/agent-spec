@@ -126,14 +126,14 @@ mod tests {
     fn test_parse_basic_meta() {
         let lines = vec![
             "spec: task",
-            r#"name: "退款功能""#,
+            r#"name: "Refund feature""#,
             "inherits: project",
             "tags: [payment, refund]",
             "lang: zh",
         ];
         let meta = parse_meta(&lines).unwrap();
         assert_eq!(meta.level, SpecLevel::Task);
-        assert_eq!(meta.name, "退款功能");
+        assert_eq!(meta.name, "Refund feature");
         assert_eq!(meta.inherits, Some("project".into()));
         assert_eq!(meta.tags, vec!["payment", "refund"]);
         assert_eq!(meta.lang, vec![Lang::Zh]);
@@ -153,7 +153,7 @@ mod tests {
     fn test_parse_spec_depends_and_estimate_fields() {
         let lines = vec![
             "spec: task",
-            r#"name: "依赖图测试""#,
+            r#"name: "Dependency graph test""#,
             "inherits: project",
             "tags: [bootstrap]",
             "depends: [task-goal-gate]",
@@ -168,7 +168,7 @@ mod tests {
     fn test_parse_meta_multiple_depends() {
         let lines = vec![
             "spec: task",
-            r#"name: "多依赖""#,
+            r#"name: "Multiple dependencies""#,
             "depends: [task-a, task-b, task-c]",
         ];
         let meta = parse_meta(&lines).unwrap();
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_parse_meta_no_depends_no_estimate() {
-        let lines = vec!["spec: task", r#"name: "无依赖""#];
+        let lines = vec!["spec: task", r#"name: "No dependencies""#];
         let meta = parse_meta(&lines).unwrap();
         assert!(meta.depends.is_empty());
         assert!(meta.estimate.is_none());

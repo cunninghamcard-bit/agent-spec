@@ -683,47 +683,47 @@ mod tests {
     use crate::spec_core::StepKind;
 
     const SAMPLE_SPEC: &str = r#"spec: task
-name: "退款功能"
+name: "Refund feature"
 inherits: project
 tags: [payment, refund]
 ---
 
 ## Intent
 
-为支付网关添加退款功能，支持全额和部分退款。
+Add refund support to the payment gateway, covering full and partial refunds.
 
 ## Constraints
 
-- 退款金额不得超过原始交易金额
-- 退款操作需要管理员权限
-- 退款必须在原交易后 90 天内发起
+- Refund amount must not exceed the original transaction amount
+- Refund operations require administrator privileges
+- Refunds must be initiated within 90 days of the original transaction
 
 ## Acceptance Criteria
 
-Scenario: 全额退款
-  Given 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
-  And 当前用户具有管理员权限
-  When 用户对 "TXN-001" 发起全额退款
-  Then 退款状态变为 "processing"
-  And 原始交易状态变为 "refunding"
+Scenario: Full refund
+  Given a completed transaction with amount "100.00" and id "TXN-001"
+  And the current user has administrator privileges
+  When the user initiates a full refund for "TXN-001"
+  Then the refund status becomes "processing"
+  And the original transaction status becomes "refunding"
 
-Scenario: 退款拒绝 - 超期
-  Given 存在一笔 91 天前完成的交易 "TXN-003"
-  When 用户对 "TXN-003" 发起退款
-  Then 系统拒绝退款
-  And 返回错误信息包含 "超过退款期限"
+Scenario: Refund rejected - expired
+  Given a transaction "TXN-003" completed 91 days ago
+  When the user initiates a refund for "TXN-003"
+  Then the system rejects the refund
+  And the error message contains "refund window exceeded"
 
 ## Out of Scope
 
-- 登录功能
-- 密码重置
+- Login feature
+- Password reset
 "#;
 
     #[test]
     fn test_parse_full_spec() {
         let doc = parse_spec_from_str(SAMPLE_SPEC).unwrap();
 
-        assert_eq!(doc.meta.name, "退款功能");
+        assert_eq!(doc.meta.name, "Refund feature");
         assert_eq!(doc.meta.level, crate::spec_core::SpecLevel::Task);
         assert_eq!(doc.meta.inherits, Some("project".into()));
         assert_eq!(doc.meta.tags, vec!["payment", "refund"]);
@@ -734,7 +734,7 @@ Scenario: 退款拒绝 - 超期
         // Intent
         match &doc.sections[0] {
             Section::Intent { content, .. } => {
-                assert!(content.contains("退款功能"));
+                assert!(content.contains("refund support"));
             }
             other => panic!("expected Intent, got {other:?}"),
         }
@@ -743,7 +743,7 @@ Scenario: 退款拒绝 - 超期
         match &doc.sections[1] {
             Section::Constraints { items, .. } => {
                 assert_eq!(items.len(), 3);
-                assert!(items[0].text.contains("退款金额"));
+                assert!(items[0].text.contains("Refund amount"));
             }
             other => panic!("expected Constraints, got {other:?}"),
         }
@@ -754,7 +754,7 @@ Scenario: 退款拒绝 - 超期
                 assert_eq!(scenarios.len(), 2);
 
                 let s1 = &scenarios[0];
-                assert_eq!(s1.name, "全额退款");
+                assert_eq!(s1.name, "Full refund");
                 assert_eq!(s1.steps.len(), 5);
                 assert_eq!(s1.steps[0].kind, StepKind::Given);
                 assert_eq!(s1.steps[0].params, vec!["100.00", "TXN-001"]);
@@ -765,7 +765,7 @@ Scenario: 退款拒绝 - 超期
                 assert_eq!(s1.steps[4].kind, StepKind::And);
 
                 let s2 = &scenarios[1];
-                assert_eq!(s2.name, "退款拒绝 - 超期");
+                assert_eq!(s2.name, "Refund rejected - expired");
                 assert_eq!(s2.steps.len(), 4);
             }
             other => panic!("expected AcceptanceCriteria, got {other:?}"),
@@ -775,7 +775,7 @@ Scenario: 退款拒绝 - 超期
         match &doc.sections[3] {
             Section::OutOfScope { items, .. } => {
                 assert_eq!(items.len(), 2);
-                assert_eq!(items[0], "登录功能");
+                assert_eq!(items[0], "Login feature");
             }
             other => panic!("expected OutOfScope, got {other:?}"),
         }
@@ -821,6 +821,7 @@ Scenario: Successful registration
 
     #[test]
     fn test_parse_mixed_lang_keywords_rejected() {
+        // deliberate Chinese fixture: the CJK step keyword `当` is the test subject.
         // Mixing CJK step keywords into an otherwise-English scenario used to
         // be accepted; keywords are now English-only.
         let input = r#"spec: task
@@ -843,17 +844,17 @@ Scenario: 混合场景
     #[test]
     fn test_parse_step_table_and_preserve_json_output() {
         let input = r#"spec: task
-name: "表格测试"
+name: "Table test"
 ---
 
 ## Acceptance Criteria
 
-Scenario: 注册请求
-  When 发送 POST /api/v1/auth/register 请求:
+Scenario: Registration request
+  When a POST /api/v1/auth/register request is sent:
     | field    | value             |
     | email    | alice@example.com |
     | password | Str0ng!Pass#2024  |
-  Then 响应状态码应为 201
+  Then the response status code should be 201
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -877,15 +878,15 @@ Scenario: 注册请求
     #[test]
     fn test_parse_scenario_without_table_stays_unchanged() {
         let input = r#"spec: task
-name: "普通场景"
+name: "Plain scenario"
 ---
 
 ## Acceptance Criteria
 
-Scenario: 无表格
-  Given 用户已登录
-  When 用户点击提交
-  Then 页面显示成功
+Scenario: No table
+  Given the user is logged in
+  When the user clicks submit
+  Then the page shows success
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -894,7 +895,7 @@ Scenario: 无表格
                 let scenario = &scenarios[0];
                 assert_eq!(scenario.steps.len(), 3);
                 assert!(scenario.steps.iter().all(|step| step.table.is_empty()));
-                assert_eq!(scenario.steps[1].text, "用户点击提交");
+                assert_eq!(scenario.steps[1].text, "the user clicks submit");
             }
             other => panic!("expected AcceptanceCriteria, got {other:?}"),
         }
@@ -960,16 +961,16 @@ Scenario: Parse succeeds
     #[test]
     fn test_parse_scenario_with_explicit_test_selector() {
         let input = r#"spec: task
-name: "绑定测试"
+name: "Binding test"
 ---
 
 ## Completion Criteria
 
-Scenario: 显式绑定
+Scenario: Explicit binding
   Test: test_parse_scenario_with_explicit_test_selector
-  Given 某个场景声明测试选择器
-  When parser 解析该场景
-  Then AST 中保留该 selector
+  Given a scenario declares a test selector
+  When the parser reads the scenario
+  Then the AST keeps the selector
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -997,18 +998,18 @@ Scenario: 显式绑定
     #[test]
     fn test_parse_structured_test_selector_block() {
         let input = r#"spec: task
-name: "结构化绑定"
+name: "Structured binding"
 ---
 
 ## Completion Criteria
 
-Scenario: 结构化绑定
+Scenario: Structured binding
   Test:
     Package: spec-parser
     Filter: test_parse_structured_test_selector_block
-  Given 某个场景声明结构化测试选择器
-  When parser 解析该场景
-  Then AST 中保留结构化字段
+  Given a scenario declares a structured test selector
+  When the parser reads the scenario
+  Then the AST keeps the structured fields
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1032,21 +1033,21 @@ Scenario: 结构化绑定
     #[test]
     fn test_parse_scenario_verification_metadata_fields() {
         let input = r#"spec: task
-name: "验证元数据"
+name: "Verification metadata"
 ---
 
 ## Completion Criteria
 
-Scenario: 结构化验证强度
+Scenario: Structured verification strength
   Test:
     Package: agent-spec
     Filter: test_parse_scenario_verification_metadata_fields
     Level: integration
     Test Double: local_http_stub
     Targets: commands/update
-  Given 某个场景声明验证元数据
-  When parser 解析该场景
-  Then AST 中保留这些字段
+  Given a scenario declares verification metadata
+  When the parser reads the scenario
+  Then the AST keeps these fields
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1140,16 +1141,16 @@ Scenario: legacy selector
     #[test]
     fn test_parse_shorthand_test_selector_as_filter_only() {
         let input = r#"spec: task
-name: "单行绑定"
+name: "Single-line binding"
 ---
 
 ## Completion Criteria
 
-Scenario: 单行绑定
+Scenario: Single-line binding
   Test: test_parse_shorthand_test_selector_as_filter_only
-  Given 某个场景继续使用单行测试绑定
-  When parser 解析该场景
-  Then filter 字段被保留
+  Given a scenario keeps using a single-line test binding
+  When the parser reads the scenario
+  Then the filter field is preserved
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1176,7 +1177,7 @@ Scenario: 单行绑定
     #[test]
     fn test_unknown_top_level_section_header_is_rejected() {
         let input = r#"spec: task
-name: "未知章节"
+name: "Unknown section"
 ---
 
 ## Intent
@@ -1240,17 +1241,17 @@ name: "Markdown Scenario"
     #[test]
     fn test_parse_mode_field_in_scenario() {
         let input = r#"spec: task
-name: "模式测试"
+name: "Mode test"
 ---
 
 ## Completion Criteria
 
-Scenario: 优化场景
+Scenario: Optimize scenario
   Mode: optimize
   Test: test_parse_mode_field_in_scenario
-  Given 某个场景声明 optimize 模式
-  When parser 解析该场景
-  Then AST 中 mode 字段为 Optimize
+  Given a scenario declares optimize mode
+  When the parser reads the scenario
+  Then the mode field in the AST is Optimize
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         match &doc.sections[0] {
@@ -1317,28 +1318,28 @@ Scenario: no mode declared
     #[test]
     fn test_parse_depends_field_in_scenario() {
         let input = r#"spec: task
-name: "依赖测试"
+name: "Dependency test"
 ---
 
 ## Completion Criteria
 
-Scenario: 用户注册
-  Given 注册表单已打开
-  When 用户提交注册
-  Then 注册成功
+Scenario: User registration
+  Given the registration form is open
+  When the user submits registration
+  Then registration succeeds
 
-Scenario: 用户登录
-  Depends: 用户注册
-  Given 已有注册用户
-  When 用户登录
-  Then 登录成功
+Scenario: User login
+  Depends: User registration
+  Given a registered user exists
+  When the user logs in
+  Then login succeeds
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         match &doc.sections[0] {
             Section::AcceptanceCriteria { scenarios, .. } => {
                 assert_eq!(scenarios.len(), 2);
                 assert!(scenarios[0].depends_on.is_empty());
-                assert_eq!(scenarios[1].depends_on, vec!["用户注册"]);
+                assert_eq!(scenarios[1].depends_on, vec!["User registration"]);
             }
             other => panic!("expected AcceptanceCriteria, got {other:?}"),
         }
@@ -1404,27 +1405,27 @@ Scenario: C
     #[test]
     fn test_parse_rule_header_creates_behavior_rule() {
         let input = r#"spec: task
-name: "鉴权"
+name: "Auth"
 ---
 
 ## Completion Criteria
 
-### Rule: auth-must-not-leak — 鉴权失败不得泄漏内部错误
-Scenario: 失败返回稳定错误
+### Rule: auth-must-not-leak — Auth failures must not leak internal errors
+Scenario: Failure returns a stable error
   Test: test_auth_stable_error
-  Given 鉴权失败
-  When 返回响应
-  Then 不包含内部堆栈
+  Given authentication fails
+  When the response is returned
+  Then it contains no internal stack trace
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-auth").unwrap();
         let rules = rules_of(&doc);
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].key.id, "auth-must-not-leak");
         assert_eq!(rules[0].key.scope, RuleScope::Task("task-auth".into()));
-        assert_eq!(rules[0].name, "鉴权失败不得泄漏内部错误");
+        assert_eq!(rules[0].name, "Auth failures must not leak internal errors");
         assert_eq!(
             rules[0].scenario_names,
-            vec!["失败返回稳定错误".to_string()]
+            vec!["Failure returns a stable error".to_string()]
         );
 
         let scenarios = scenarios_of(&doc);
@@ -1434,17 +1435,17 @@ Scenario: 失败返回稳定错误
     #[test]
     fn test_parse_rule_header_without_display_name() {
         let input = r#"spec: task
-name: "退款"
+name: "Refund"
 ---
 
 ## Completion Criteria
 
 ### Rule: refund-must-be-idempotent
-Scenario: 重复退款只生效一次
+Scenario: Repeated refunds take effect only once
   Test: test_refund_idempotent
-  Given 已退款
-  When 再次退款
-  Then 不重复扣减
+  Given a refund was already made
+  When a refund is attempted again
+  Then no duplicate deduction happens
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-refund").unwrap();
         let rules = rules_of(&doc);
@@ -1455,6 +1456,7 @@ Scenario: 重复退款只生效一次
 
     #[test]
     fn test_chinese_rule_alias_rejected() {
+        // deliberate Chinese fixture: the CJK keyword `规则:` is the test subject.
         // `规则:` used to be an accepted alias of `Rule:`; keywords are now
         // English-only and the parser must point at the replacement.
         let input = r#"spec: task
@@ -1479,28 +1481,34 @@ Example: VIP 用户折扣优先
     #[test]
     fn test_parse_example_alias_as_scenario() {
         let input = r#"spec: task
-name: "提现"
+name: "Withdrawal"
 ---
 
 ## Completion Criteria
 
-Example: 余额充足时提现成功
+Example: Withdrawal succeeds with sufficient balance
   Test: test_withdraw_ok
-  Given 余额 "200"
-  When 提现 "100"
-  Then 成功
+  Given a balance of "200"
+  When withdrawing "100"
+  Then it succeeds
 
-Example: 余额不足时提现失败
+Example: Withdrawal fails with insufficient balance
   Test: test_withdraw_insufficient
-  Given 余额 "50"
-  When 提现 "100"
-  Then 拒绝
+  Given a balance of "50"
+  When withdrawing "100"
+  Then it is rejected
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-withdraw").unwrap();
         let scenarios = scenarios_of(&doc);
         assert_eq!(scenarios.len(), 2);
-        assert_eq!(scenarios[0].name, "余额充足时提现成功");
-        assert_eq!(scenarios[1].name, "余额不足时提现失败");
+        assert_eq!(
+            scenarios[0].name,
+            "Withdrawal succeeds with sufficient balance"
+        );
+        assert_eq!(
+            scenarios[1].name,
+            "Withdrawal fails with insufficient balance"
+        );
         // No new "Example" AST node — both are Scenario, serialized as such.
         let json = serde_json::to_string(&doc).unwrap();
         assert!(!json.contains("\"Example\""));
@@ -1520,17 +1528,17 @@ Example: 余额不足时提现失败
     #[test]
     fn test_rule_scope_serializes_to_json() {
         let input = r#"spec: task
-name: "鉴权"
+name: "Auth"
 ---
 
 ## Completion Criteria
 
-### Rule: auth-must-not-leak — 鉴权失败不得泄漏内部错误
-Scenario: 失败返回稳定错误
+### Rule: auth-must-not-leak — Auth failures must not leak internal errors
+Scenario: Failure returns a stable error
   Test: test_auth_stable_error
-  Given 鉴权失败
-  When 返回响应
-  Then 不包含内部堆栈
+  Given authentication fails
+  When the response is returned
+  Then it contains no internal stack trace
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-auth").unwrap();
         let json = serde_json::to_string(&doc).unwrap();
@@ -1546,13 +1554,13 @@ Scenario: 失败返回稳定错误
         // but the v1 parser never produces them.
         let doc = parse_spec_from_str_with_stem(
             r#"spec: task
-name: "鉴权"
+name: "Auth"
 ---
 
 ## Completion Criteria
 
 ### Rule: auth-ok
-Scenario: 通过
+Scenario: Pass
   Test: test_ok
   Given a
   When b
@@ -1595,7 +1603,7 @@ Scenario: 通过
     fn test_rule_double_space_separator_with_em_dash_in_display() {
         // Bug 1/2: leftmost separator wins. Double-space is the intended
         // id/name separator even when the display name contains an em dash.
-        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\n### Rule: rate-limit  Throttling — protect upstream\nScenario: 超阈值\n  Test: t\n  When a\n  Then b\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\n### Rule: rate-limit  Throttling — protect upstream\nScenario: Over threshold\n  Test: t\n  When a\n  Then b\n";
         let doc = parse_spec_from_str_with_stem(input, "task-x").unwrap();
         let rules = rules_of(&doc);
         assert_eq!(rules.len(), 1, "double-space separator must yield one rule");
@@ -1674,7 +1682,7 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 绑定
+Scenario: Binding
   Test: test_x
   When a
   Then b
@@ -1696,7 +1704,7 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 无绑定
+Scenario: No binding
   When a
   Then b
 "#;
@@ -1727,8 +1735,8 @@ name: "x"
 
 ## Intent
 
-做点事。
-<!-- lint-ack: bdd-rule-id — 故意留作示例 -->
+Do something.
+<!-- lint-ack: bdd-rule-id — deliberately kept as an example -->
 
 ## Completion Criteria
 
@@ -1740,7 +1748,11 @@ Scenario: s
         let doc = parse_spec_from_str(input).unwrap();
         assert_eq!(doc.lint_acks.len(), 1);
         assert_eq!(doc.lint_acks[0].code, "bdd-rule-id");
-        assert!(doc.lint_acks[0].reason.contains("故意留作示例"));
+        assert!(
+            doc.lint_acks[0]
+                .reason
+                .contains("deliberately kept as an example")
+        );
     }
 
     #[test]
@@ -1766,17 +1778,18 @@ name: "x"
 
 ## Questions
 
-- 折扣能否叠加?
-- 退款按原价还是折后价?
+- Can discounts stack?
+- Are refunds based on the original or the discounted price?
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let q = questions_of(&doc).expect("Questions section present");
         assert_eq!(q.len(), 2);
-        assert!(q[0].contains("折扣"));
+        assert!(q[0].contains("discounts"));
     }
 
     #[test]
     fn test_chinese_questions_header_rejected() {
+        // deliberate Chinese fixture: the CJK section header `## 问题` is the test subject.
         let input = r#"spec: task
 name: "x"
 ---
@@ -1806,14 +1819,14 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 唯一场景
+Scenario: Only scenario
   Test: t
   When a
   Then b
 
 ## Questions
 
-- 还没想清楚的问题
+- A question not yet thought through
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let resolved = crate::spec_parser::resolve_spec(doc, &[]).unwrap();
@@ -1832,7 +1845,7 @@ name: "ecosystem-import"
 
 ## Completion Criteria
 
-### Rule: import-preserves-traceability — 导入保留来源 ID
+### Rule: import-preserves-traceability — Import preserves source IDs
 "#;
         let doc = parse_spec_from_str_with_stem(input, "ignored-stem").unwrap();
         let rules = rules_of(&doc);
@@ -1855,23 +1868,23 @@ name: "ecosystem-import"
     #[test]
     fn test_parse_review_field_in_scenario() {
         let input = r#"spec: task
-name: "审核测试"
+name: "Review test"
 ---
 
 ## Completion Criteria
 
-Scenario: 需要人类审核
+Scenario: Requires human review
   Review: human
   Test: test_parse_review_field_in_scenario
-  Given 某个场景声明审核为 human
-  When parser 解析该场景
-  Then AST 中 review 字段为 Human
+  Given a scenario declares review as human
+  When the parser reads the scenario
+  Then the review field in the AST is Human
 
-Scenario: 默认自动审核
+Scenario: Default auto review
   Test: test_default_auto_review
-  Given 某个场景不声明审核字段
-  When parser 解析该场景
-  Then AST 中 review 字段为 Auto
+  Given a scenario declares no review field
+  When the parser reads the scenario
+  Then the review field in the AST is Auto
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();

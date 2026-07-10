@@ -342,7 +342,7 @@ mod tests {
     fn test_boundaries_verifier_accepts_changes_within_allowed_paths() {
         let resolved = make_resolved_spec(
             r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -374,7 +374,7 @@ name: "边界"
     fn test_boundaries_verifier_rejects_change_outside_allowed_paths() {
         let resolved = make_resolved_spec(
             r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -408,7 +408,7 @@ name: "边界"
     fn test_boundaries_verifier_rejects_change_matching_forbidden_boundary() {
         let resolved = make_resolved_spec(
             r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -442,7 +442,7 @@ name: "边界"
     }
 
     const SCOPED_ALLOWED_SPEC: &str = r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -527,7 +527,7 @@ name: "边界"
     fn test_boundary_bare_manifest_filenames_are_path_boundaries() {
         let resolved = make_resolved_spec(
             r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -592,7 +592,7 @@ name: "boundary"
     fn test_boundary_absolute_change_paths_relativized_against_workspace_root() {
         let resolved = make_resolved_spec(
             r#"spec: task
-name: "边界"
+name: "Boundaries"
 ---
 
 ## Boundaries
@@ -630,7 +630,7 @@ name: "边界"
             task: crate::spec_core::SpecDocument {
                 meta: SpecMeta {
                     level: SpecLevel::Task,
-                    name: "边界".into(),
+                    name: "Boundaries".into(),
                     inherits: None,
                     lang: vec![],
                     tags: vec![],

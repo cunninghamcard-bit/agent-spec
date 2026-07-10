@@ -447,7 +447,7 @@ mod tests {
         let dir = temp_dir("pass");
         let ctx = ctx_with(
             vec![scenario_with_selector(
-                "成功注册",
+                "Successful registration",
                 TestSelector::filter_only("register rejects duplicate"),
             )],
             dir.clone(),
@@ -474,7 +474,7 @@ mod tests {
         </testsuite></testsuites>"#;
         let cases = parse_junit(xml).unwrap();
         let scenario = scenario_with_selector(
-            "重复邮箱",
+            "Duplicate email",
             TestSelector::filter_only("register rejects duplicate"),
         );
         let selector = scenario.test_selector.clone().unwrap();
@@ -490,7 +490,7 @@ mod tests {
     fn test_report_mode_fails_when_selector_not_in_report() {
         let cases = parse_junit("<testsuites></testsuites>").unwrap();
         let scenario =
-            scenario_with_selector("查无此名", TestSelector::filter_only("no_such_test"));
+            scenario_with_selector("No such name", TestSelector::filter_only("no_such_test"));
         let selector = scenario.test_selector.clone().unwrap();
 
         let result = judge_scenario(&scenario, &selector, &cases, "report.xml", 0);
@@ -513,7 +513,7 @@ mod tests {
             <testcase classname="t" name="flaky thing"><skipped/></testcase>
         </testsuite></testsuites>"#;
         let cases = parse_junit(xml).unwrap();
-        let scenario = scenario_with_selector("被跳过", TestSelector::filter_only("flaky thing"));
+        let scenario = scenario_with_selector("Skipped", TestSelector::filter_only("flaky thing"));
         let selector = scenario.test_selector.clone().unwrap();
 
         let result = judge_scenario(&scenario, &selector, &cases, "report.xml", 0);
@@ -529,7 +529,7 @@ mod tests {
         </testsuite></testsuites>"#;
         let cases = parse_junit(xml).unwrap();
         let scenario = scenario_with_selector(
-            "歧义",
+            "Ambiguous",
             TestSelector::filter_only("register rejects duplicate"),
         );
         let selector = scenario.test_selector.clone().unwrap();
@@ -551,7 +551,7 @@ mod tests {
         let dir = temp_dir("missing");
         let ctx = ctx_with(
             vec![scenario_with_selector(
-                "报告缺失",
+                "Missing report",
                 TestSelector::filter_only("anything"),
             )],
             dir.clone(),
@@ -585,7 +585,7 @@ mod tests {
             test_double: None,
             targets: None,
         };
-        let scenario = scenario_with_selector("前缀过滤", selector.clone());
+        let scenario = scenario_with_selector("Prefix filter", selector.clone());
 
         let result = judge_scenario(&scenario, &selector, &cases, "report.xml", 0);
 
@@ -627,7 +627,7 @@ mod tests {
         let dir = temp_dir("cargo-path");
         let ctx = ctx_with(
             vec![scenario_with_selector(
-                "老路径",
+                "Legacy path",
                 TestSelector::filter_only("some_test"),
             )],
             dir.clone(),
@@ -646,7 +646,7 @@ mod tests {
         // configuration error, proving report mode routing is distinct.
         let ctx = ctx_with(
             vec![scenario_with_selector(
-                "缺 report 配置",
+                "Missing report config",
                 TestSelector::filter_only("some_test"),
             )],
             dir.clone(),

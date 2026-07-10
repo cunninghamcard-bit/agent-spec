@@ -162,13 +162,13 @@ mod tests {
         fs::write(
             &project_path,
             r#"spec: project
-name: "项目"
+name: "Project"
 ---
 
 ## Constraints
 
 ### Must Not
-- 禁止使用 `panic!`
+- Do not use `panic!`
 "#,
         )
         .unwrap();
@@ -177,20 +177,20 @@ name: "项目"
         fs::write(
             &task_path,
             r#"spec: task
-name: "任务"
+name: "Task"
 inherits: project
 ---
 
 ## Intent
 
-实现功能。
+Implement the feature.
 
 ## Acceptance Criteria
 
-Scenario: 正常路径
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+Scenario: Happy path
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 "#,
         )
         .unwrap();
@@ -200,7 +200,10 @@ Scenario: 正常路径
 
         assert_eq!(resolved.task.meta.level, SpecLevel::Task);
         assert_eq!(resolved.inherited_constraints.len(), 1);
-        assert_eq!(resolved.inherited_constraints[0].text, "禁止使用 `panic!`");
+        assert_eq!(
+            resolved.inherited_constraints[0].text,
+            "Do not use `panic!`"
+        );
         assert!(resolved.inherited_decisions.is_empty());
 
         let _ = fs::remove_dir_all(root);
@@ -221,13 +224,13 @@ Scenario: 正常路径
         fs::write(
             &project_path,
             r#"spec: project
-name: "项目"
+name: "Project"
 ---
 
 ## Constraints
 
 ### Must
-- 必须保留顶层项目规则
+- Must keep the top-level project rules
 "#,
         )
         .unwrap();
@@ -236,20 +239,20 @@ name: "项目"
         fs::write(
             &task_path,
             r#"spec: task
-name: "路线图任务"
+name: "Roadmap task"
 inherits: project
 ---
 
 ## Intent
 
-把路线图任务放在嵌套目录中。
+Put the roadmap task in a nested directory.
 
 ## Completion Criteria
 
-Scenario: 正常路径
-  Given 存在顶层 `project.spec`
-  When 从 `specs/roadmap/task.spec` 加载任务
-  Then 继承链继续生效
+Scenario: Happy path
+  Given a top-level `project.spec` exists
+  When the task is loaded from `specs/roadmap/task.spec`
+  Then the inheritance chain still applies
 "#,
         )
         .unwrap();
@@ -261,7 +264,7 @@ Scenario: 正常路径
         assert_eq!(resolved.inherited_constraints.len(), 1);
         assert_eq!(
             resolved.inherited_constraints[0].text,
-            "必须保留顶层项目规则"
+            "Must keep the top-level project rules"
         );
         assert!(resolved.inherited_decisions.is_empty());
 

@@ -1155,20 +1155,20 @@ mod tests {
     fn test_plan_prompt_includes_rule_grouping() {
         let doc = crate::spec_parser::parse_spec_from_str(
             r#"spec: task
-name: "退款"
+name: "Refunds"
 ---
 
 ## Completion Criteria
 
-### Rule: refund-must-be-idempotent — 退款幂等
-Scenario: 首次退款成功
+### Rule: refund-must-be-idempotent — Refund idempotency
+Scenario: First refund succeeds
   Test: t1
-  When 退款
-  Then 成功
-Scenario: 重复退款不重复扣减
+  When a refund is made
+  Then it succeeds
+Scenario: Repeated refund does not deduct twice
   Test: t2
-  When 再次退款
-  Then 不重复
+  When the refund is retried
+  Then no duplicate deduction occurs
 "#,
         )
         .unwrap();
@@ -1183,10 +1183,10 @@ Scenario: 重复退款不重复扣减
         let prompt = format_plan_prompt(&ctx);
 
         assert!(prompt.contains("## Behavior Rules"));
-        assert!(prompt.contains("Rule `refund-must-be-idempotent` — 退款幂等"));
+        assert!(prompt.contains("Rule `refund-must-be-idempotent` — Refund idempotency"));
         // The two examples proving the rule are listed under it.
         let rule_pos = prompt.find("refund-must-be-idempotent").unwrap();
-        let ex_pos = prompt.find("首次退款成功").unwrap();
+        let ex_pos = prompt.find("First refund succeeds").unwrap();
         assert!(rule_pos < ex_pos, "examples listed under their rule");
     }
 

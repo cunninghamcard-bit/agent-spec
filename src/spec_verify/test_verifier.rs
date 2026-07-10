@@ -291,8 +291,8 @@ mod tests {
     #[test]
     fn extracts_spec_bindings_from_test_comments() {
         let source = r#"
-// @spec: 场景一
-// @spec: 场景二
+// @spec: Scenario one
+// @spec: Scenario two
 #[test]
 fn test_example() {}
 "#;
@@ -301,18 +301,18 @@ fn test_example() {}
         assert_eq!(bindings.len(), 2);
         assert_eq!(
             bindings[0],
-            ("场景一".to_string(), "test_example".to_string())
+            ("Scenario one".to_string(), "test_example".to_string())
         );
         assert_eq!(
             bindings[1],
-            ("场景二".to_string(), "test_example".to_string())
+            ("Scenario two".to_string(), "test_example".to_string())
         );
     }
 
     #[test]
     fn ignores_comments_not_followed_by_a_test() {
         let source = r#"
-// @spec: 场景一
+// @spec: Scenario one
 fn helper() {}
 "#;
 
@@ -322,7 +322,7 @@ fn helper() {}
     #[test]
     fn test_explicit_scenario_selector_takes_precedence_over_legacy_comment_binding() {
         let scenario = Scenario {
-            name: "场景一".into(),
+            name: "Scenario one".into(),
             steps: Vec::new(),
             test_selector: Some(TestSelector::filter_only(
                 "test_explicit_scenario_selector_takes_precedence_over_legacy_comment_binding",
@@ -334,7 +334,7 @@ fn helper() {}
             rule: None,
             span: Span::default(),
         };
-        let legacy = HashMap::from([("场景一".to_string(), "legacy_test_name".to_string())]);
+        let legacy = HashMap::from([("Scenario one".to_string(), "legacy_test_name".to_string())]);
 
         let binding = resolve_test_binding(&scenario, &legacy).unwrap();
         assert_eq!(
@@ -349,7 +349,7 @@ fn helper() {}
     #[test]
     fn test_legacy_comment_binding_is_used_when_no_explicit_selector_exists() {
         let scenario = Scenario {
-            name: "场景一".into(),
+            name: "Scenario one".into(),
             steps: Vec::new(),
             test_selector: None,
             tags: Vec::new(),
@@ -360,7 +360,7 @@ fn helper() {}
             span: Span::default(),
         };
         let legacy = HashMap::from([(
-            "场景一".to_string(),
+            "Scenario one".to_string(),
             "test_legacy_comment_binding_is_used_when_no_explicit_selector_exists".to_string(),
         )]);
 

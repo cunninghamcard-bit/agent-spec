@@ -75,10 +75,10 @@ mod tests {
     #[test]
     fn test_audit_counts_specs_rules_scenarios() {
         let a = doc(
-            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\n### Rule: r-one — 一\nScenario: s1\n  Test: t1\n  When a\n  Then b\nScenario: s2\n  Test: t2\n  When a\n  Then b\n",
+            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\n### Rule: r-one — one\nScenario: s1\n  Test: t1\n  When a\n  Then b\nScenario: s2\n  Test: t2\n  When a\n  Then b\n",
         );
         let b = doc(
-            "spec: task\nname: \"b\"\n---\n\n## Completion Criteria\n\n### Rule: r-two — 二\nScenario: s3\n  Test: t3\n  When a\n  Then b\n",
+            "spec: task\nname: \"b\"\n---\n\n## Completion Criteria\n\n### Rule: r-two — two\nScenario: s3\n  Test: t3\n  When a\n  Then b\n",
         );
         let rep = audit_specs(&[a, b]);
         assert_eq!(rep.spec_count, 2);
@@ -105,7 +105,8 @@ mod tests {
 
     #[test]
     fn test_audit_counts_open_questions() {
-        let a = doc("spec: task\nname: \"a\"\n---\n\n## Questions\n\n- 未决\n- [x] 已决\n");
+        let a =
+            doc("spec: task\nname: \"a\"\n---\n\n## Questions\n\n- still open\n- [x] settled\n");
         assert_eq!(audit_specs(&[a]).open_questions, 1);
     }
 

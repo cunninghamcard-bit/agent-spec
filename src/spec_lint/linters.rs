@@ -39,7 +39,7 @@ impl SpecLinter for VagueVerbLinter {
                                 ),
                                 span: c.span,
                                 suggestion: Some(
-                                    "replace with specific action: 创建/删除/校验/查询 or create/delete/validate/query".into(),
+                                    "replace with a specific action: create/delete/validate/query".into(),
                                 ),
                             });
                         }
@@ -120,7 +120,7 @@ impl SpecLinter for UnquantifiedLinter {
                             ),
                             span: c.span,
                             suggestion: Some(
-                                "add a measurable threshold: e.g., '< 200ms', '>= 80%', '不超过 5 次'".into(),
+                                "add a measurable threshold: e.g., '< 200ms', '>= 80%', 'at most 5 retries'".into(),
                             ),
                         });
                     }
@@ -461,7 +461,7 @@ impl SpecLinter for ExplicitTestBindingLinter {
                             ),
                             span: scenario.span,
                             suggestion: Some(
-                                "add `测试: test_name` or `Test: test_name` directly under the scenario header".into(),
+                                "add `Test: test_name` directly under the scenario header".into(),
                             ),
                         });
                     }
@@ -527,7 +527,7 @@ impl SpecLinter for ScenarioPresenceLinter {
                     "task spec has an Acceptance Criteria section but no parseable scenarios".into(),
                 span: *acceptance_sections[0].1,
                 suggestion: Some(
-                    "write scenarios using bare `场景:` / `Scenario:` lines, or run `agent-spec parse` to inspect the AST".into(),
+                    "write scenarios using bare `Scenario:` lines, or run `agent-spec parse` to inspect the AST".into(),
                 ),
             }];
         }
@@ -1230,7 +1230,7 @@ impl SpecLinter for VerificationMetadataSuggestionLinter {
                             ),
                             span: scenario.span,
                             suggestion: Some(
-                                "add `Level:` / `层级:`, `Test Double:` / `替身:`, or `Targets:` / `命中:` to clarify test strength".into(),
+                                "add `Level:`, `Test Double:`, or `Targets:` to clarify test strength".into(),
                             ),
                         });
                     }
@@ -2133,7 +2133,7 @@ fn dfs_find_cycle<'a>(
 // is legitimate, and how to leave a trace if not fixing.
 // =============================================================================
 
-/// `bdd-rule-id`: a `Rule:` / `规则:` line whose leading token is not a valid
+/// `bdd-rule-id`: a `Rule:` line whose leading token is not a valid
 /// kebab-case id is dropped by the parser (no auto-slugify). Warn so the author
 /// gives it a stable id or removes it.
 pub struct BddRuleIdLinter;
@@ -2161,7 +2161,7 @@ impl SpecLinter for BddRuleIdLinter {
                         span: m.span,
                         suggestion: Some(
                             "A Rule needs a stable id (^[a-z][a-z0-9-]$) because it survives display-name edits and lifts to capability scope unchanged. \
-Fix: `Rule: kebab-id — 显示名` (em dash or two-space separator), or `Rule: kebab-id` alone. \
+Fix: `Rule: kebab-id — display name` (em dash or two-space separator), or `Rule: kebab-id` alone. \
 If you don't want a rule here, delete the line — scenarios stay flat. \
 If you must keep it as-is for now, leave `<!-- lint-ack: bdd-rule-id — <reason> -->` (full lint-ack lands in Phase 5).".into(),
                         ),
@@ -2273,7 +2273,7 @@ impl SpecLinter for BddScenarioShapeLinter {
                             ),
                             span: sc.span,
                             suggestion: Some(
-                                "A behavioral example needs a trigger (When/当) and an observable outcome (Then/那么) because without them the verifier cannot bind it to behavior. \
+                                "A behavioral example needs a trigger (When) and an observable outcome (Then) because without them the verifier cannot bind it to behavior. \
 Fix: add the missing step(s). \
 If this is intentionally a setup-only fragment, reconsider whether it should be a Scenario at all. \
 To keep it as-is for now, leave `<!-- lint-ack: bdd-scenario-shape — <reason> -->` (full lint-ack lands in Phase 5).".into(),
@@ -2285,13 +2285,13 @@ To keep it as-is for now, leave `<!-- lint-ack: bdd-scenario-shape — <reason> 
                             rule: "bdd-scenario-shape".into(),
                             severity: Severity::Warning,
                             message: format!(
-                                "scenario '{}' opens with And/But (并且/但是) — nothing to continue from",
+                                "scenario '{}' opens with And/But — nothing to continue from",
                                 sc.display_name()
                             ),
                             span: sc.steps[0].span,
                             suggestion: Some(
                                 "And/But continue a prior Given/When/Then, because an opening continuation has nothing to continue from. \
-Fix: start the scenario with Given/When/Then (假设/当/那么) instead. \
+Fix: start the scenario with Given/When/Then instead. \
 If the leading And/But is deliberate, leave `<!-- lint-ack: bdd-scenario-shape — <reason> -->` (full lint-ack lands in Phase 5).".into(),
                             ),
                         });
@@ -2573,6 +2573,7 @@ Scenario: ok
 
     #[test]
     fn test_vague_verb_linter() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (处理 in VAGUE_VERBS_ZH)
         let input = r#"spec: task
 name: "test"
 ---
@@ -2607,6 +2608,7 @@ name: "test"
 
     #[test]
     fn test_testability_linter() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (美观 in UNTESTABLE_ZH)
         let input = r#"spec: task
 name: "test"
 ---
@@ -2647,25 +2649,25 @@ Scenario: test
     #[test]
     fn test_full_pipeline() {
         let input = r#"spec: task
-name: "退款功能"
+name: "Refund feature"
 ---
 
 ## Intent
 
-为支付网关添加退款功能。
+Add refund capability to the payment gateway.
 
 ## Constraints
 
-- 退款金额不得超过原始交易金额
-- 退款操作需要管理员权限
+- The refund amount must not exceed the original transaction amount
+- Refund operations require admin privileges
 
 ## Acceptance Criteria
 
-Scenario: 全额退款
+Scenario: Full refund
   Test: test_full_refund
-  Given 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
-  When 用户对 "TXN-001" 发起全额退款
-  Then 退款状态变为 "processing"
+  Given a completed transaction "TXN-001" with amount "100.00" exists
+  When the user initiates a full refund for "TXN-001"
+  Then the refund status becomes "processing"
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let pipeline = crate::spec_lint::LintPipeline::with_defaults();
@@ -2683,10 +2685,10 @@ name: "test"
 
 ## Completion Criteria
 
-Scenario: 缺失绑定
-  Given 存在某个任务
-  When verifier 检查规格
-  Then 应报告缺少 selector
+Scenario: missing binding
+  Given a task exists
+  When the verifier checks the spec
+  Then it should report a missing selector
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ExplicitTestBindingLinter.lint(&doc);
@@ -2825,11 +2827,11 @@ name: "test"
 
 ## Completion Criteria
 
-Scenario: 显式绑定
+Scenario: explicit binding
   Test: test_explicit_test_binding_linter_accepts_explicit_selector
-  Given 存在某个任务
-  When verifier 检查规格
-  Then 不应报告绑定错误
+  Given a task exists
+  When the verifier checks the spec
+  Then no binding error is reported
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ExplicitTestBindingLinter.lint(&doc);
@@ -2863,20 +2865,20 @@ name: "test"
 
 ## Decisions
 
-- 使用 `BTreeMap` 确保输出顺序确定性。
-- 本地源优先从 `source.path` 读取 registry。
+- Use `BTreeMap` to ensure deterministic output order.
+- The local source reads content from `source.path` first.
 
 ## Acceptance Criteria
 
-Scenario: 输出是确定性的
+Scenario: output is deterministic
   Test: output_is_deterministic
-  Given 已构建注册表
-  When 运行 build 命令
-  Then 输出使用 BTreeMap 排序
+  Given the registry has been built
+  When the build command runs
+  Then output is sorted with BTreeMap
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = DecisionCoverageLinter.lint(&doc);
-        // "BTreeMap" is covered by the scenario, but "source.path" / "本地源" is NOT
+        // "BTreeMap" is covered by the scenario, but the "source.path" decision is NOT
         assert!(
             diags.len() >= 1,
             "should warn about uncovered 'source.path' decision, got {} diags",
@@ -2893,15 +2895,15 @@ name: "test"
 
 ## Decisions
 
-- 使用 `BTreeMap` 确保输出顺序确定性。
+- Use `BTreeMap` to ensure deterministic output order.
 
 ## Acceptance Criteria
 
-Scenario: 输出是确定性的
+Scenario: output is deterministic
   Test: output_is_deterministic
-  Given 已构建注册表
-  When 运行 build 命令
-  Then 输出使用 BTreeMap 排序
+  Given the registry has been built
+  When the build command runs
+  Then output is sorted with BTreeMap
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = DecisionCoverageLinter.lint(&doc);
@@ -2916,15 +2918,15 @@ name: "test"
 
 ## Decisions
 
-- `--json` 模式下 stdout 只能输出 JSON，fallback 顺序必须保持稳定。
+- In `--json` mode, stdout emits JSON only; the fallback sequence stays stable.
 
 ## Acceptance Criteria
 
-Scenario: 默认输出可用
+Scenario: default human display works
   Test: human_output_works
-  Given 用户运行默认命令
-  When 输出结果
-  Then 人类模式返回文本
+  Given the user runs the default command
+  When results are displayed
+  Then human-readable text is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ObservableDecisionCoverageLinter.lint(&doc);
@@ -2940,15 +2942,15 @@ name: "test"
 
 ## Decisions
 
-- `get --json` 返回结构化输出，`-o/--output` 用于写文件。
+- `get --json` returns structured output; `-o/--output` writes to a file.
 
 ## Acceptance Criteria
 
-Scenario: 默认 human 输出可用
+Scenario: default human output works
   Test: human_output_works
-  Given 用户运行默认命令
-  When 输出结果
-  Then 返回默认 human 输出
+  Given the user runs the default command
+  When results are printed
+  Then the default human output is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = OutputModeCoverageLinter.lint(&doc);
@@ -2966,15 +2968,15 @@ name: "test"
 
 ## Decisions
 
-- 读取顺序为 `local -> cache -> remote`。
+- Lookup happens as `local -> cache -> remote`.
 
 ## Acceptance Criteria
 
-Scenario: 远端读取成功
+Scenario: remote lookup succeeds
   Test: remote_read_success
-  Given 用户请求内容
-  When 运行读取命令
-  Then 返回文档内容
+  Given the user requests a document
+  When the lookup command runs
+  Then the document body is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = PrecedenceFallbackCoverageLinter.lint(&doc);
@@ -2990,11 +2992,11 @@ name: "test"
 
 ## Acceptance Criteria
 
-Scenario: HTTP 4xx 返回错误
+Scenario: HTTP 4xx returns an error
   Test: mock_only_http_error
-  Given 通过注入 mock closure 模拟 404 HTTP 响应
-  When 运行 update
-  Then 返回 HTTP error
+  Given a 404 HTTP response is simulated via an injected mock closure
+  When update runs
+  Then an HTTP error is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ExternalIoErrorStrengthLinter.lint(&doc);
@@ -3010,16 +3012,16 @@ name: "test"
 
 ## Decisions
 
-- 使用 `BTreeMap` 和 `serde_json`。
-- 目录结构维持 `src/**` 和 `specs/**`。
+- Use `BTreeMap` and `serde_json`.
+- Keep the directory layout as `src/**` and `specs/**`.
 
 ## Acceptance Criteria
 
-Scenario: 输出是确定性的
+Scenario: deterministic ordering
   Test: output_is_deterministic
-  Given 已构建注册表
-  When 运行 build 命令
-  Then 输出使用 BTreeMap 排序
+  Given the registry has been built
+  When the build command runs
+  Then entries are sorted with BTreeMap
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         assert!(ObservableDecisionCoverageLinter.lint(&doc).is_empty());
@@ -3036,11 +3038,11 @@ name: "test"
 
 ## Acceptance Criteria
 
-Scenario: HTTP 4xx 返回错误
+Scenario: HTTP 4xx returns an error
   Test: update_http_error
-  Given 远端 HTTP 请求返回 404
-  When 运行 update
-  Then 返回 HTTP error
+  Given the remote HTTP request returns 404
+  When update runs
+  Then an HTTP error is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = VerificationMetadataSuggestionLinter.lint(&doc);
@@ -3058,17 +3060,17 @@ name: "test"
 
 ## Acceptance Criteria
 
-Scenario: 成功创建用户
+Scenario: user creation succeeds
   Test: create_user_success
-  Given 数据库可用
-  When 提交有效用户数据
-  Then 用户被创建
+  Given the database is available
+  When well-formed user data is submitted
+  Then the user is created
 
-Scenario: 成功查询用户
+Scenario: user query succeeds
   Test: query_user_success
-  Given 用户已存在
-  When 查询用户列表
-  Then 返回用户数据
+  Given a user exists
+  When the user list is queried
+  Then user data is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ErrorPathLinter.lint(&doc);
@@ -3085,17 +3087,17 @@ name: "test"
 
 ## Acceptance Criteria
 
-Scenario: 成功创建用户
+Scenario: user creation succeeds
   Test: create_user_success
-  Given 数据库可用
-  When 提交有效用户数据
-  Then 用户被创建
+  Given the database is available
+  When well-formed user data is submitted
+  Then the user is created
 
-Scenario: 无效数据返回错误
+Scenario: invalid data returns an error
   Test: create_user_invalid_error
-  Given 数据库可用
-  When 提交无效用户数据
-  Then 返回错误消息
+  Given the database is available
+  When invalid user data is submitted
+  Then an error message is returned
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = ErrorPathLinter.lint(&doc);
@@ -3131,6 +3133,7 @@ Scenario: rejects invalid input
 
     #[test]
     fn test_universal_claim_warns_single_scenario_for_all_entry_points() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (所有入口 in UNIVERSAL_ZH)
         let input = r#"spec: task
 name: "test"
 ---
@@ -3305,6 +3308,7 @@ Scenario: app works
 
     #[test]
     fn test_flag_combination_warns_when_multiple_flags_but_no_combo_scenario() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (COMBINATION_FLAGS_ZH indicators)
         let input = r#"spec: task
 name: "test"
 ---
@@ -3341,6 +3345,7 @@ Scenario: JSON 模式输出
 
     #[test]
     fn test_flag_combination_passes_when_combo_scenario_exists() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (多 ID + 写文件 combo detection)
         let input = r#"spec: task
 name: "test"
 ---
@@ -3381,15 +3386,15 @@ name: "test"
 
 ## Decisions
 
-- 使用 BTreeMap 确保输出顺序。
+- Use BTreeMap to ensure deterministic ordering.
 
 ## Acceptance Criteria
 
-Scenario: 输出有序
+Scenario: ordered output
   Test: ordered_output
-  Given 已构建注册表
-  When 运行 build
-  Then 输出是确定性的
+  Given the registry has been built
+  When build runs
+  Then output is deterministic
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = FlagCombinationCoverageLinter.lint(&doc);
@@ -3410,7 +3415,7 @@ name: "test"
 
 ## Decisions
 
-- 读取顺序为 local source -> 本地缓存 -> npm bundled dist -> 远端下载。
+- Lookup order is local source -> local cache -> npm bundled dist -> remote download.
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = PlatformDecisionTagLinter.lint(&doc);
@@ -3426,6 +3431,7 @@ name: "test"
 
     #[test]
     fn test_platform_tag_passes_when_tagged() {
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (不实现 in PLATFORM_AWARENESS_MARKERS)
         let input = r#"spec: task
 name: "test"
 ---
@@ -3452,8 +3458,8 @@ name: "test"
 
 ## Decisions
 
-- 使用 BTreeMap 和 serde_json。
-- 搜索优先使用预构建 BM25 index。
+- Use BTreeMap and serde_json.
+- Search relies on the prebuilt BM25 index.
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = PlatformDecisionTagLinter.lint(&doc);
@@ -3563,13 +3569,13 @@ Scenario: C
     #[test]
     fn test_freeform_rule_emits_warning_and_does_not_group_scenarios() {
         let input = r#"spec: task
-name: "促销"
+name: "promotions"
 ---
 
 ## Completion Criteria
 
-Rule: VIP 折扣优先于促销叠加
-Scenario: 折扣场景
+Rule: VIP discounts beat promo stacking
+Scenario: discount scenario
   Test: test_discount
   Given a
   When b
@@ -3595,20 +3601,20 @@ Scenario: 折扣场景
     #[test]
     fn test_bdd_rule_grouping_suggests_when_three_or_more_scenarios_uncategorized() {
         let input = r#"spec: task
-name: "无分组"
+name: "ungrouped"
 ---
 
 ## Completion Criteria
 
-Scenario: 一
+Scenario: one
   Test: t1
   When a
   Then b
-Scenario: 二
+Scenario: two
   Test: t2
   When a
   Then b
-Scenario: 三
+Scenario: three
   Test: t3
   When a
   Then b
@@ -3625,12 +3631,12 @@ Scenario: 三
     #[test]
     fn test_bdd_rule_grouping_warns_on_empty_rule() {
         let input = r#"spec: task
-name: "空规则"
+name: "empty rule"
 ---
 
 ## Completion Criteria
 
-### Rule: orphan-rule — 没有场景的规则
+### Rule: orphan-rule — a rule with no scenarios
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = BddRuleGroupingLinter.lint(&doc);
@@ -3644,14 +3650,14 @@ name: "空规则"
     #[test]
     fn test_bdd_scenario_shape_flags_missing_when_or_then() {
         let input = r#"spec: task
-name: "缺步骤"
+name: "missing steps"
 ---
 
 ## Completion Criteria
 
-Scenario: 只有假设
+Scenario: setup only
   Test: t1
-  Given 用户已登录
+  Given the user is signed in
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = BddScenarioShapeLinter.lint(&doc);
@@ -3665,16 +3671,16 @@ Scenario: 只有假设
     #[test]
     fn test_bdd_scenario_shape_flags_leading_and_or_but() {
         let input = r#"spec: task
-name: "首步And"
+name: "leading And"
 ---
 
 ## Completion Criteria
 
-Scenario: 错误开头
+Scenario: wrong opening
   Test: t1
-  And 这是一个错误的开头
-  When 触发
-  Then 结果
+  And this opening has nothing to continue
+  When the action fires
+  Then a result appears
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = BddScenarioShapeLinter.lint(&doc);
@@ -3704,6 +3710,7 @@ Scenario: login flow
         assert!(diags.iter().any(|d| d.rule == "bdd-implementation-detail-step"
             && d.severity == Severity::Info));
 
+        // deliberate Chinese fixture: exercises the zh-prose analyzer (点击 in BDD_IMPL_DETAIL_ZH)
         let zh = r#"spec: task
 name: "ui zh"
 ---
@@ -3733,7 +3740,7 @@ name: "x"
 
 ## Questions
 
-- 折扣能否叠加?
+- can discounts stack?
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = OpenQuestionLinter.lint(&doc);
@@ -3752,7 +3759,7 @@ name: "x"
 
 ## Questions
 
-- [x] 折扣不叠加(已定)
+- [x] discounts do not stack (decided)
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let diags = OpenQuestionLinter.lint(&doc);
@@ -3767,7 +3774,7 @@ name: "x"
 
 ## Questions
 
-- 未决问题
+- an undecided question
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let report = crate::spec_lint::LintPipeline::with_defaults().run(&doc);
@@ -3790,10 +3797,10 @@ name: "guidance"
 ## Completion Criteria
 
 Rule: NOT-kebab
-### Rule: orphan-rule — 空规则
-Scenario: 缺then
+### Rule: orphan-rule — an empty rule
+Scenario: missing then
   Test: t1
-  When 用户点击按钮
+  When the user clicks the button
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let mut all = Vec::new();

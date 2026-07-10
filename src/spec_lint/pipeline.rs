@@ -317,22 +317,22 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 一
+Scenario: one
   Test: t1
   When a
   Then b
-Scenario: 二
+Scenario: two
   Test: t2
   When a
   Then b
-Scenario: 三
+Scenario: three
   Test: t3
   When a
   Then b
 
 ## Questions
 
-- 还没想清楚
+- not thought through yet
 "#;
 
     fn with_ack(spec: &str, ack_line: &str) -> String {
@@ -343,7 +343,7 @@ Scenario: 三
     fn test_lint_ack_moves_warning_to_acknowledged() {
         let input = with_ack(
             OPEN_Q_SPEC,
-            "<!-- lint-ack: open-question — 原型阶段不需要 -->",
+            "<!-- lint-ack: open-question — not needed at prototype stage -->",
         );
         let doc = parse_spec_from_str(&input).unwrap();
         let report = LintPipeline::with_defaults().run(&doc);

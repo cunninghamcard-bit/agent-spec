@@ -448,44 +448,44 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const SAMPLE: &str = r#"spec: task
-name: "测试任务"
+name: "Test task"
 tags: [test]
 ---
 
 ## Intent
 
-实现一个简单的功能。
+Implement a simple feature.
 
 ## Constraints
 
 ### Must NOT
-- 禁止使用 `.unwrap()`
-- 禁止使用 `panic!`
+- Do not use `.unwrap()`
+- Do not use `panic!`
 
 ### Must
-- 所有错误必须返回 Result
+- All errors must return Result
 
 ## Decisions
 
-- 使用 thiserror 处理错误类型
+- Use thiserror for error types
 
 ## Acceptance Criteria
 
-Scenario: 正常路径
+Scenario: Happy path
   Test: test_full_lifecycle
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 
-Scenario: 错误路径
+Scenario: Error path
   Test: test_plan_returns_task_contract
-  Given 输入无效
-  When 调用函数
-  Then 返回 Err
+  Given the input is invalid
+  When the function is called
+  Then Err is returned
 
 ## Out of Scope
 
-- 日志系统
+- Logging system
 "#;
 
     #[test]
@@ -493,20 +493,20 @@ Scenario: 错误路径
         let gw = SpecGateway::from_input(SAMPLE).unwrap();
         let contract = gw.plan();
 
-        assert_eq!(contract.name, "测试任务");
-        assert_eq!(contract.intent, "实现一个简单的功能。");
-        assert_eq!(contract.must, vec!["所有错误必须返回 Result"]);
+        assert_eq!(contract.name, "Test task");
+        assert_eq!(contract.intent, "Implement a simple feature.");
+        assert_eq!(contract.must, vec!["All errors must return Result"]);
         assert_eq!(
             contract.must_not,
-            vec!["禁止使用 `.unwrap()`", "禁止使用 `panic!`"]
+            vec!["Do not use `.unwrap()`", "Do not use `panic!`"]
         );
-        assert_eq!(contract.decisions, vec!["使用 thiserror 处理错误类型"]);
+        assert_eq!(contract.decisions, vec!["Use thiserror for error types"]);
         assert!(contract.forbidden.is_empty());
-        assert_eq!(contract.out_of_scope, vec!["日志系统"]);
+        assert_eq!(contract.out_of_scope, vec!["Logging system"]);
         assert_eq!(contract.completion_criteria.len(), 2);
 
         let contract_prompt = contract.to_prompt();
-        assert!(contract_prompt.contains("# Task Contract: 测试任务"));
+        assert!(contract_prompt.contains("# Task Contract: Test task"));
         assert!(contract_prompt.contains("## Must"));
         assert!(contract_prompt.contains("## Must NOT"));
         assert!(contract_prompt.contains("## Boundaries"));
@@ -517,7 +517,7 @@ Scenario: 错误路径
         assert!(lint.quality_score.overall > 0.0);
 
         let json = contract.to_json();
-        assert!(json.contains("测试任务"));
+        assert!(json.contains("Test task"));
     }
 
     #[test]
@@ -532,7 +532,7 @@ Scenario: 错误路径
         assert_eq!(plan.decisions, contract.decisions);
         assert_eq!(plan.forbidden, contract.forbidden);
         assert_eq!(plan.completion_criteria.len(), 2);
-        assert!(plan.to_prompt().contains("# Task Contract: 测试任务"));
+        assert!(plan.to_prompt().contains("# Task Contract: Test task"));
     }
 
     #[test]
@@ -547,15 +547,15 @@ Scenario: 错误路径
     fn test_quality_gate_fails_on_error_lint_issue() {
         let gw = SpecGateway::from_input(
             r#"spec: task
-name: "缺少测试绑定"
+name: "Missing test binding"
 ---
 
 ## Completion Criteria
 
-Scenario: 缺少 selector
-  Given 存在一个任务规格
-  When 质量闸门检查该规格
-  Then 质量闸门应失败
+Scenario: Missing selector
+  Given a task spec exists
+  When the quality gate checks the spec
+  Then the quality gate should fail
 "#,
         )
         .unwrap();
@@ -577,20 +577,20 @@ Scenario: 缺少 selector
         assert!(prompt.contains("## Decisions"));
         assert!(prompt.contains("## Boundaries"));
         assert!(prompt.contains("## Completion Criteria"));
-        assert!(prompt.contains("Scenario: 正常路径"));
-        assert!(prompt.contains("Scenario: 错误路径"));
+        assert!(prompt.contains("Scenario: Happy path"));
+        assert!(prompt.contains("Scenario: Error path"));
     }
 
     #[test]
     fn test_skip_is_not_passing() {
         let gw = SpecGateway::from_input(SAMPLE).unwrap();
         let report = VerificationReport {
-            spec_name: "测试任务".into(),
+            spec_name: "Test task".into(),
             results: vec![crate::spec_core::ScenarioResult {
-                scenario_name: "未验证场景".into(),
+                scenario_name: "Unverified scenario".into(),
                 verdict: Verdict::Skip,
                 step_results: vec![crate::spec_core::StepVerdict {
-                    step_text: "等待 verifier".into(),
+                    step_text: "waiting for the verifier".into(),
                     verdict: Verdict::Skip,
                     reason: "no verifier covered this step".into(),
                 }],
@@ -626,13 +626,13 @@ Scenario: 缺少 selector
         fs::write(
             root.join("project.spec"),
             r#"spec: project
-name: "项目规则"
+name: "Project rules"
 ---
 
 ## Constraints
 
 ### Must NOT
-- 禁止使用 `panic!`
+- Do not use `panic!`
 "#,
         )
         .unwrap();
@@ -640,25 +640,25 @@ name: "项目规则"
         fs::write(
             root.join("task.spec"),
             r#"spec: task
-name: "任务"
+name: "Task"
 inherits: project
 ---
 
 ## Intent
 
-实现功能。
+Implement the feature.
 
 ## Constraints
 
 ### Must
-- 返回 Result
+- Return Result
 
 ## Acceptance Criteria
 
-Scenario: 正常路径
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+Scenario: Happy path
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 "#,
         )
         .unwrap();
@@ -667,9 +667,13 @@ Scenario: 正常路径
         let prompt = gw.plan().to_prompt();
         let contract = gw.contract();
 
-        assert!(prompt.contains("禁止使用 `panic!`"));
-        assert!(prompt.contains("返回 Result"));
-        assert!(contract.must_not.contains(&"禁止使用 `panic!`".to_string()));
+        assert!(prompt.contains("Do not use `panic!`"));
+        assert!(prompt.contains("Return Result"));
+        assert!(
+            contract
+                .must_not
+                .contains(&"Do not use `panic!`".to_string())
+        );
 
         let _ = fs::remove_dir_all(root);
     }
@@ -686,20 +690,20 @@ Scenario: 正常路径
         fs::write(
             root.join("project.spec"),
             r#"spec: project
-name: "项目规则"
+name: "Project rules"
 ---
 
 ## Constraints
 
 ### Must
-- 所有公共 API 返回结构化错误
+- All public APIs return structured errors
 
 ### Must NOT
-- 禁止使用 `panic!`
+- Do not use `panic!`
 
 ## Decisions
 
-- 使用 `thiserror` 统一错误类型
+- Use `thiserror` for unified error types
 "#,
         )
         .unwrap();
@@ -707,24 +711,24 @@ name: "项目规则"
         fs::write(
             root.join("task.spec"),
             r#"spec: task
-name: "任务"
+name: "Task"
 inherits: project
 ---
 
 ## Intent
 
-实现功能。
+Implement the feature.
 
 ## Decisions
 
-- 返回值保持现有 JSON 格式
+- Return values keep the existing JSON format
 
 ## Acceptance Criteria
 
-Scenario: 正常路径
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+Scenario: Happy path
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 "#,
         )
         .unwrap();
@@ -735,18 +739,22 @@ Scenario: 正常路径
         assert!(
             contract
                 .must
-                .contains(&"所有公共 API 返回结构化错误".to_string())
-        );
-        assert!(contract.must_not.contains(&"禁止使用 `panic!`".to_string()));
-        assert!(
-            contract
-                .decisions
-                .contains(&"使用 `thiserror` 统一错误类型".to_string())
+                .contains(&"All public APIs return structured errors".to_string())
         );
         assert!(
             contract
+                .must_not
+                .contains(&"Do not use `panic!`".to_string())
+        );
+        assert!(
+            contract
                 .decisions
-                .contains(&"返回值保持现有 JSON 格式".to_string())
+                .contains(&"Use `thiserror` for unified error types".to_string())
+        );
+        assert!(
+            contract
+                .decisions
+                .contains(&"Return values keep the existing JSON format".to_string())
         );
 
         let _ = fs::remove_dir_all(root);
@@ -761,34 +769,37 @@ name: "Contract fidelity"
 
 ## Intent
 
-修正 Task Contract 语义。
+Fix Task Contract semantics.
 
 ## Constraints
 
 ### Must
-- 所有公共函数返回 `Result`
+- All public functions return `Result`
 
 ### Must NOT
-- 禁止使用 `panic!`
+- Do not use `panic!`
 
 ## Decisions
 
-- 使用 `thiserror` 统一错误类型
+- Use `thiserror` for unified error types
 
 ## Acceptance Criteria
 
-Scenario: 正常路径
-  Given 合同包含多类约束
-  When gateway 构造 Task Contract
-  Then 不同约束保持独立
+Scenario: Happy path
+  Given the contract contains multiple constraint kinds
+  When the gateway builds the Task Contract
+  Then the different constraint kinds stay distinct
 "#,
         )
         .unwrap();
 
         let contract = gw.plan();
-        assert_eq!(contract.must, vec!["所有公共函数返回 `Result`"]);
-        assert_eq!(contract.must_not, vec!["禁止使用 `panic!`"]);
-        assert_eq!(contract.decisions, vec!["使用 `thiserror` 统一错误类型"]);
+        assert_eq!(contract.must, vec!["All public functions return `Result`"]);
+        assert_eq!(contract.must_not, vec!["Do not use `panic!`"]);
+        assert_eq!(
+            contract.decisions,
+            vec!["Use `thiserror` for unified error types"]
+        );
     }
 
     #[allow(deprecated)]
@@ -800,7 +811,11 @@ Scenario: 正常路径
 
         assert_eq!(brief.name, contract.name);
         assert_eq!(brief.must, contract.must);
-        assert!(brief.must_not.contains(&"禁止使用 `.unwrap()`".to_string()));
+        assert!(
+            brief
+                .must_not
+                .contains(&"Do not use `.unwrap()`".to_string())
+        );
         assert_eq!(brief.decided, contract.decisions);
         assert_eq!(
             brief.scenario_names.len(),
@@ -812,13 +827,13 @@ Scenario: 正常路径
     fn test_pass_plus_skip_is_not_passing() {
         let gw = SpecGateway::from_input(SAMPLE).unwrap();
         let report = VerificationReport {
-            spec_name: "测试任务".into(),
+            spec_name: "Test task".into(),
             results: vec![
                 crate::spec_core::ScenarioResult {
-                    scenario_name: "[structural] 禁止使用 `panic!`".into(),
+                    scenario_name: "[structural] Do not use `panic!`".into(),
                     verdict: Verdict::Pass,
                     step_results: vec![crate::spec_core::StepVerdict {
-                        step_text: "禁止使用 `panic!`".into(),
+                        step_text: "Do not use `panic!`".into(),
                         verdict: Verdict::Pass,
                         reason: "no violations found".into(),
                     }],
@@ -827,10 +842,10 @@ Scenario: 正常路径
                     provenance: None,
                 },
                 crate::spec_core::ScenarioResult {
-                    scenario_name: "未验证场景".into(),
+                    scenario_name: "Unverified scenario".into(),
                     verdict: Verdict::Skip,
                     step_results: vec![crate::spec_core::StepVerdict {
-                        step_text: "等待 verifier".into(),
+                        step_text: "waiting for the verifier".into(),
                         verdict: Verdict::Skip,
                         reason: "no verifier covered this step".into(),
                     }],
@@ -857,22 +872,22 @@ Scenario: 正常路径
     #[test]
     fn test_new_bdd_lints_do_not_affect_lifecycle_verdict() {
         // Triggers bdd-rule-grouping (3 ungrouped scenarios) and
-        // bdd-implementation-detail-step (点击), all warning/info.
+        // bdd-implementation-detail-step (clicks), all warning/info.
         let input = r#"spec: task
 name: "lint-not-gating"
 ---
 
 ## Completion Criteria
 
-Scenario: 一
+Scenario: One
   Test: t1
-  When 用户点击按钮
-  Then 成功
-Scenario: 二
+  When the user clicks the button
+  Then it succeeds
+Scenario: Two
   Test: t2
   When a
   Then b
-Scenario: 三
+Scenario: Three
   Test: t3
   When a
   Then b
@@ -897,7 +912,7 @@ Scenario: 三
         let all_pass = VerificationReport {
             spec_name: "lint-not-gating".into(),
             results: vec![crate::spec_core::ScenarioResult {
-                scenario_name: "一".into(),
+                scenario_name: "One".into(),
                 verdict: Verdict::Pass,
                 step_results: vec![],
                 evidence: vec![],
@@ -969,10 +984,10 @@ name: "AI skeleton"
 
 ## Completion Criteria
 
-Scenario: 需要 AI 判断
-  Given 存在一个未被机械 verifier 覆盖的场景
-  When gateway 使用 stub 模式验证
-  Then 返回 uncertain
+Scenario: Requires AI judgment
+  Given a scenario is not covered by any mechanical verifier
+  When the gateway verifies in stub mode
+  Then uncertain is returned
 "#,
         )
         .unwrap();
@@ -1026,10 +1041,10 @@ name: "AI provenance"
 
 ## Completion Criteria
 
-Scenario: 未覆盖场景
-  Given 存在一个未被机械 verifier 覆盖的场景
-  When gateway 使用 stub 模式验证
-  Then 返回 uncertain
+Scenario: Uncovered scenario
+  Given a scenario is not covered by any mechanical verifier
+  When the gateway verifies in stub mode
+  Then uncertain is returned
 "#,
         )
         .unwrap();
@@ -1051,10 +1066,10 @@ name: "AI skeleton"
 
 ## Completion Criteria
 
-Scenario: 需要 AI 判断
-  Given 存在一个未被机械 verifier 覆盖的场景
-  When gateway 使用默认模式验证
-  Then 返回 skip
+Scenario: Requires AI judgment
+  Given a scenario is not covered by any mechanical verifier
+  When the gateway verifies in default mode
+  Then skip is returned
 "#,
         )
         .unwrap();
@@ -1096,11 +1111,11 @@ Scenario: 需要 AI 判断
 
         fs::write(
             root.join("org.spec"),
-            "spec: org\nname: \"组织规则\"\n---\n\n## Constraints\n\n- No hardcoded credentials\n",
+            "spec: org\nname: \"Org rules\"\n---\n\n## Constraints\n\n- No hardcoded credentials\n",
         )
         .unwrap();
-        fs::write(root.join("project.spec"), "spec: project\nname: \"项目规则\"\ninherits: org\n---\n\n## Constraints\n\n### Must\n- All public APIs return structured errors\n\n### Must NOT\n- 禁止使用 `panic!`\n\n## Decisions\n\n- Use thiserror for error types\n").unwrap();
-        fs::write(root.join("task.spec"), "spec: task\nname: \"任务\"\ninherits: project\n---\n\n## Intent\n\n实现功能。\n\n## Completion Criteria\n\nScenario: happy path\n  Given valid input\n  When function is called\n  Then returns Ok\n").unwrap();
+        fs::write(root.join("project.spec"), "spec: project\nname: \"Project rules\"\ninherits: org\n---\n\n## Constraints\n\n### Must\n- All public APIs return structured errors\n\n### Must NOT\n- Do not use `panic!`\n\n## Decisions\n\n- Use thiserror for error types\n").unwrap();
+        fs::write(root.join("task.spec"), "spec: task\nname: \"Task\"\ninherits: project\n---\n\n## Intent\n\nImplement the feature.\n\n## Completion Criteria\n\nScenario: happy path\n  Given valid input\n  When function is called\n  Then returns Ok\n").unwrap();
 
         let gw = SpecGateway::load(root.join("task.spec")).unwrap();
         let contract = gw.plan();
@@ -1121,7 +1136,7 @@ Scenario: 需要 AI 判断
             contract
                 .must_not
                 .iter()
-                .any(|c| c.contains("禁止使用 `panic!`"))
+                .any(|c| c.contains("Do not use `panic!`"))
         );
         assert!(
             contract
@@ -1142,10 +1157,10 @@ name: "AI host backend"
 
 ## Completion Criteria
 
-Scenario: 交给宿主 backend
-  Given 宿主 agent 提供了自定义 backend
-  When gateway 执行验证
-  Then 返回 backend 的分析结果
+Scenario: Delegate to the host backend
+  Given the host agent provides a custom backend
+  When the gateway runs verification
+  Then the backend's analysis result is returned
 "#,
         )
         .unwrap();
@@ -1176,49 +1191,55 @@ Scenario: 交给宿主 backend
     }
 
     const CRITICAL_SAMPLE: &str = r#"spec: task
-name: "门禁测试"
+name: "Gate test"
 tags: [test]
 ---
 
 ## Intent
 
-测试门禁功能。
+Test the gate feature.
 
 ## Acceptance Criteria
 
-Scenario: 普通场景
+Scenario: Normal scenario
   Test: test_critical_scenario_fail_sets_gate_blocked
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 
-Scenario: 关键场景
+Scenario: Critical scenario
   Tags: [critical]
   Test: test_critical_scenario_pass_no_gate_block
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 "#;
 
     #[test]
     fn test_critical_scenario_fail_sets_gate_blocked() {
         let gw = SpecGateway::from_input(CRITICAL_SAMPLE).unwrap();
         let report = make_report(
-            "门禁测试",
-            &[("普通场景", Verdict::Pass), ("关键场景", Verdict::Fail)],
+            "Gate test",
+            &[
+                ("Normal scenario", Verdict::Pass),
+                ("Critical scenario", Verdict::Fail),
+            ],
         );
 
         let gate = gw.gate_status(&report);
         assert!(gate.gate_blocked);
-        assert_eq!(gate.blocked_gates, vec!["关键场景"]);
+        assert_eq!(gate.blocked_gates, vec!["Critical scenario"]);
     }
 
     #[test]
     fn test_critical_scenario_pass_no_gate_block() {
         let gw = SpecGateway::from_input(CRITICAL_SAMPLE).unwrap();
         let report = make_report(
-            "门禁测试",
-            &[("普通场景", Verdict::Pass), ("关键场景", Verdict::Pass)],
+            "Gate test",
+            &[
+                ("Normal scenario", Verdict::Pass),
+                ("Critical scenario", Verdict::Pass),
+            ],
         );
 
         let gate = gw.gate_status(&report);
@@ -1230,8 +1251,8 @@ Scenario: 关键场景
     fn test_no_critical_tag_preserves_existing_behavior() {
         let gw = SpecGateway::from_input(SAMPLE).unwrap();
         let report = make_report(
-            "测试任务",
-            &[("正常路径", Verdict::Pass), ("错误路径", Verdict::Fail)],
+            "Test task",
+            &[("Happy path", Verdict::Pass), ("Error path", Verdict::Fail)],
         );
 
         let gate = gw.gate_status(&report);
@@ -1245,34 +1266,37 @@ Scenario: 关键场景
     #[test]
     fn test_critical_suffix_in_scenario_name() {
         let spec_with_suffix = r#"spec: task
-name: "后缀测试"
+name: "Suffix test"
 tags: [test]
 ---
 
 ## Intent
 
-测试名称后缀。
+Test the name suffix.
 
 ## Acceptance Criteria
 
-Scenario: 用户注册成功（critical）
+Scenario: User registration succeeds（critical）
   Test: test_critical_suffix_in_scenario_name
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 "#;
         let gw = SpecGateway::from_input(spec_with_suffix).unwrap();
 
         // Verify the scenario is recognized as critical
         let scenario = &gw.resolved().all_scenarios[0];
         assert!(scenario.is_critical());
-        assert_eq!(scenario.display_name(), "用户注册成功");
+        assert_eq!(scenario.display_name(), "User registration succeeds");
 
         // Verify gate_status works with the display name
-        let report = make_report("后缀测试", &[("用户注册成功（critical）", Verdict::Fail)]);
+        let report = make_report(
+            "Suffix test",
+            &[("User registration succeeds（critical）", Verdict::Fail)],
+        );
         let gate = gw.gate_status(&report);
         assert!(gate.gate_blocked);
-        assert_eq!(gate.blocked_gates, vec!["用户注册成功"]);
+        assert_eq!(gate.blocked_gates, vec!["User registration succeeds"]);
     }
 
     #[test]
@@ -1280,8 +1304,11 @@ Scenario: 用户注册成功（critical）
         // We test the gate_status method which drives exit code 2 in main.
         let gw = SpecGateway::from_input(CRITICAL_SAMPLE).unwrap();
         let report = make_report(
-            "门禁测试",
-            &[("普通场景", Verdict::Fail), ("关键场景", Verdict::Fail)],
+            "Gate test",
+            &[
+                ("Normal scenario", Verdict::Fail),
+                ("Critical scenario", Verdict::Fail),
+            ],
         );
 
         let passing = gw.is_passing(&report);
@@ -1290,7 +1317,7 @@ Scenario: 用户注册成功（critical）
         // Not passing AND gate blocked → exit code should be 2
         assert!(!passing);
         assert!(gate.gate_blocked);
-        assert_eq!(gate.blocked_gates, vec!["关键场景"]);
+        assert_eq!(gate.blocked_gates, vec!["Critical scenario"]);
     }
 
     // ── Human Review tests ─────────────────────────────────────
@@ -1299,23 +1326,26 @@ Scenario: 用户注册成功（critical）
     fn test_human_review_scenario_produces_pending_review() {
         let gw = SpecGateway::from_input(
             r#"spec: task
-name: "人类审核"
+name: "Human review"
 ---
 
 ## Completion Criteria
 
-Scenario: 需要人类审核
+Scenario: Requires human review
   Review: human
   Test: test_human_review_scenario_produces_pending_review
-  Given 某个场景声明审核为 human 且测试通过
-  When lifecycle 执行该场景
-  Then verdict 为 pending_review
+  Given a scenario declares human review and its test passes
+  When the lifecycle runs the scenario
+  Then the verdict is pending_review
 "#,
         )
         .unwrap();
 
         // Simulate a PendingReview result (test verifier would produce this)
-        let report = make_report("人类审核", &[("需要人类审核", Verdict::PendingReview)]);
+        let report = make_report(
+            "Human review",
+            &[("Requires human review", Verdict::PendingReview)],
+        );
 
         assert_eq!(report.summary.pending_review, 1);
         assert_eq!(report.results[0].verdict, Verdict::PendingReview);
@@ -1328,22 +1358,25 @@ Scenario: 需要人类审核
     fn test_auto_review_mode_treats_pending_as_pass() {
         let gw = SpecGateway::from_input(
             r#"spec: task
-name: "审核模式"
+name: "Review mode"
 ---
 
 ## Completion Criteria
 
-Scenario: 审核场景
+Scenario: Review scenario
   Review: human
   Test: test_auto_review_mode_treats_pending_as_pass
-  Given 某个场景 verdict 为 pending_review
-  When lifecycle 使用默认 review-mode auto
-  Then 最终 passed 为 true
+  Given a scenario's verdict is pending_review
+  When the lifecycle uses the default review-mode auto
+  Then the final passed is true
 "#,
         )
         .unwrap();
 
-        let report = make_report("审核模式", &[("审核场景", Verdict::PendingReview)]);
+        let report = make_report(
+            "Review mode",
+            &[("Review scenario", Verdict::PendingReview)],
+        );
 
         // Auto mode: PendingReview counts as pass
         assert!(gw.is_passing_with_review_mode(&report, "auto"));
@@ -1355,22 +1388,22 @@ Scenario: 审核场景
     fn test_strict_review_mode_treats_pending_as_not_pass() {
         let gw = SpecGateway::from_input(
             r#"spec: task
-name: "严格模式"
+name: "Strict mode"
 ---
 
 ## Completion Criteria
 
-Scenario: 严格审核
+Scenario: Strict review
   Review: human
   Test: test_strict_review_mode_treats_pending_as_not_pass
-  Given 某个场景 verdict 为 pending_review
-  When lifecycle 使用 review-mode strict
-  Then 最终 passed 为 false
+  Given a scenario's verdict is pending_review
+  When the lifecycle uses review-mode strict
+  Then the final passed is false
 "#,
         )
         .unwrap();
 
-        let report = make_report("严格模式", &[("严格审核", Verdict::PendingReview)]);
+        let report = make_report("Strict mode", &[("Strict review", Verdict::PendingReview)]);
 
         // Strict mode: PendingReview counts as NOT passing
         assert!(!gw.is_passing_with_review_mode(&report, "strict"));
@@ -1379,28 +1412,28 @@ Scenario: 严格审核
     // ── Optimize Scenario Mode tests ──────────────────────────────
 
     const OPTIMIZE_SAMPLE: &str = r#"spec: task
-name: "优化模式测试"
+name: "Optimize mode test"
 tags: [test]
 ---
 
 ## Intent
 
-测试优化场景模式。
+Test the optimize scenario mode.
 
 ## Acceptance Criteria
 
-Scenario: 普通场景
+Scenario: Normal scenario
   Test: test_optimize_scenario_pass_listed_as_candidate
-  Given 输入有效
-  When 调用函数
-  Then 返回 Ok
+  Given the input is valid
+  When the function is called
+  Then Ok is returned
 
-Scenario: 优化场景
+Scenario: Optimize scenario
   Mode: optimize
   Test: test_optimize_scenario_fail_blocks_pass
-  Given 输入有效
-  When 调用函数
-  Then 性能达标
+  Given the input is valid
+  When the function is called
+  Then performance meets the target
 "#;
 
     #[test]
@@ -1412,14 +1445,17 @@ Scenario: 优化场景
             .resolved()
             .all_scenarios
             .iter()
-            .find(|s| s.name == "优化场景")
+            .find(|s| s.name == "Optimize scenario")
             .expect("should find optimize scenario");
         assert_eq!(opt_scenario.mode, crate::spec_core::ScenarioMode::Optimize);
 
         // Build a report where optimize scenario passes
         let report = make_report(
-            "优化模式测试",
-            &[("普通场景", Verdict::Pass), ("优化场景", Verdict::Pass)],
+            "Optimize mode test",
+            &[
+                ("Normal scenario", Verdict::Pass),
+                ("Optimize scenario", Verdict::Pass),
+            ],
         );
 
         // is_passing should be true (all pass)
@@ -1440,15 +1476,18 @@ Scenario: 优化场景
             .map(|s| s.name.clone())
             .collect();
 
-        assert_eq!(candidates, vec!["优化场景"]);
+        assert_eq!(candidates, vec!["Optimize scenario"]);
     }
 
     #[test]
     fn test_optimize_scenario_fail_blocks_pass() {
         let gw = SpecGateway::from_input(OPTIMIZE_SAMPLE).unwrap();
         let report = make_report(
-            "优化模式测试",
-            &[("普通场景", Verdict::Pass), ("优化场景", Verdict::Fail)],
+            "Optimize mode test",
+            &[
+                ("Normal scenario", Verdict::Pass),
+                ("Optimize scenario", Verdict::Fail),
+            ],
         );
 
         // Optimize scenario failing should cause is_passing to be false
@@ -1458,28 +1497,28 @@ Scenario: 优化场景
     // ── Scenario Dependencies tests ──────────────────────────────
 
     const DEPENDS_SAMPLE: &str = r#"spec: task
-name: "依赖测试"
+name: "Dependency test"
 tags: [test]
 ---
 
 ## Intent
 
-测试场景依赖。
+Test scenario dependencies.
 
 ## Acceptance Criteria
 
-Scenario: 场景 A
+Scenario: Scenario A
   Test: test_dependency_skip_on_prerequisite_fail
-  Given 前置条件 A
-  When 执行 A
-  Then A 完成
+  Given precondition A
+  When A is executed
+  Then A completes
 
-Scenario: 场景 B
-  Depends: 场景 A
+Scenario: Scenario B
+  Depends: Scenario A
   Test: test_topological_sort_execution_order
-  Given 前置条件 B
-  When 执行 B
-  Then B 完成
+  Given precondition B
+  When B is executed
+  Then B completes
 "#;
 
     #[test]
@@ -1491,14 +1530,14 @@ Scenario: 场景 B
             .resolved()
             .all_scenarios
             .iter()
-            .find(|s| s.name == "场景 B")
+            .find(|s| s.name == "Scenario B")
             .expect("should find scenario B");
-        assert_eq!(scenario_b.depends_on, vec!["场景 A"]);
+        assert_eq!(scenario_b.depends_on, vec!["Scenario A"]);
 
         // Build report where A fails
         let mut report = make_report(
-            "依赖测试",
-            &[("场景 A", Verdict::Fail), ("场景 B", Verdict::Pass)],
+            "Dependency test",
+            &[("Scenario A", Verdict::Fail), ("Scenario B", Verdict::Pass)],
         );
 
         // Apply dependency skips
@@ -1508,7 +1547,7 @@ Scenario: 场景 B
         let b_result = report
             .results
             .iter()
-            .find(|r| r.scenario_name == "场景 B")
+            .find(|r| r.scenario_name == "Scenario B")
             .expect("should find scenario B result");
         assert_eq!(b_result.verdict, Verdict::Skip);
 
@@ -1523,7 +1562,7 @@ Scenario: 场景 B
     #[test]
     fn test_topological_sort_execution_order() {
         let input = r#"spec: task
-name: "拓扑排序"
+name: "Topological sort"
 ---
 
 ## Completion Criteria
@@ -1559,22 +1598,22 @@ Scenario: A
     #[test]
     fn test_no_dependency_preserves_original_order() {
         let input = r#"spec: task
-name: "原始顺序"
+name: "Original order"
 ---
 
 ## Completion Criteria
 
-Scenario: 第一个
+Scenario: First
   Given A
   When A
   Then A
 
-Scenario: 第二个
+Scenario: Second
   Given B
   When B
   Then B
 
-Scenario: 第三个
+Scenario: Third
   Given C
   When C
   Then C

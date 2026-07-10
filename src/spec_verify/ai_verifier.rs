@@ -199,18 +199,18 @@ mod tests {
         use crate::spec_core::{Constraint, ConstraintCategory};
 
         let scenario = Scenario {
-            name: "AI 场景".into(),
+            name: "AI scenario".into(),
             steps: vec![
                 Step {
                     kind: StepKind::Given,
-                    text: "存在代码上下文".into(),
+                    text: "code context exists".into(),
                     params: vec![],
                     table: vec![],
                     span: Span::line(1),
                 },
                 Step {
                     kind: StepKind::Then,
-                    text: "需要 AI 判断".into(),
+                    text: "AI judgment is required".into(),
                     params: vec![],
                     table: vec![],
                     span: Span::line(2),
@@ -233,7 +233,7 @@ mod tests {
                 task: SpecDocument {
                     meta: SpecMeta {
                         level: SpecLevel::Task,
-                        name: "AI 验证".into(),
+                        name: "AI verification".into(),
                         inherits: None,
                         lang: vec![],
                         tags: vec![],
@@ -245,12 +245,12 @@ mod tests {
                     },
                     sections: vec![
                         Section::Intent {
-                            content: "验证 AI 请求包含完整上下文".into(),
+                            content: "verify the AI request includes full context".into(),
                             span: Span::line(1),
                         },
                         Section::Constraints {
                             items: vec![Constraint {
-                                text: "所有错误必须返回 Result".into(),
+                                text: "all errors must return Result".into(),
                                 category: ConstraintCategory::Must,
                                 span: Span::line(2),
                             }],
@@ -268,7 +268,7 @@ mod tests {
                     source: String::new(),
                 },
                 inherited_constraints: vec![Constraint {
-                    text: "禁止使用 unwrap".into(),
+                    text: "must not use unwrap".into(),
                     category: ConstraintCategory::MustNot,
                     span: Span::line(1),
                 }],
@@ -282,9 +282,9 @@ mod tests {
     fn test_stub_ai_backend_returns_uncertain_decision() {
         let backend = StubAiBackend;
         let request = crate::spec_core::AiRequest {
-            spec_name: "AI 验证".into(),
-            scenario_name: "AI 场景".into(),
-            steps: vec!["需要 AI 判断".into()],
+            spec_name: "AI verification".into(),
+            scenario_name: "AI scenario".into(),
+            steps: vec!["AI judgment is required".into()],
             code_paths: vec!["src/lib.rs".into()],
             contract_intent: String::new(),
             contract_constraints: Vec::new(),
@@ -322,9 +322,12 @@ mod tests {
         let scenario = &ctx.resolved_spec.all_scenarios[0];
         let request = build_ai_request(&ctx.resolved_spec.task.meta.name, scenario, &ctx);
 
-        assert_eq!(request.spec_name, "AI 验证");
-        assert_eq!(request.scenario_name, "AI 场景");
-        assert_eq!(request.steps, vec!["存在代码上下文", "需要 AI 判断"]);
+        assert_eq!(request.spec_name, "AI verification");
+        assert_eq!(request.scenario_name, "AI scenario");
+        assert_eq!(
+            request.steps,
+            vec!["code context exists", "AI judgment is required"]
+        );
         assert!(
             request
                 .code_paths
@@ -343,7 +346,7 @@ mod tests {
         assert!(
             request
                 .contract_intent
-                .contains("验证 AI 请求包含完整上下文"),
+                .contains("verify the AI request includes full context"),
             "contract_intent should contain the spec intent"
         );
 
@@ -352,14 +355,14 @@ mod tests {
             request
                 .contract_constraints
                 .iter()
-                .any(|c| c.contains("所有错误必须返回 Result")),
+                .any(|c| c.contains("all errors must return Result")),
             "should include local constraints"
         );
         assert!(
             request
                 .contract_constraints
                 .iter()
-                .any(|c| c.contains("禁止使用 unwrap")),
+                .any(|c| c.contains("must not use unwrap")),
             "should include inherited constraints"
         );
 

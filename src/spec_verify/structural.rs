@@ -235,19 +235,21 @@ mod tests {
 
     #[test]
     fn keeps_code_like_backtick_patterns() {
-        let patterns = extract_forbidden_patterns("禁止使用 `panic!` 和 `search_dirs`");
+        let patterns = extract_forbidden_patterns("Must not use `panic!` and `search_dirs`");
         assert!(patterns.contains(&"panic!".to_string()));
         assert!(patterns.contains(&"search_dirs".to_string()));
     }
 
     #[test]
     fn ignores_plain_language_backtick_words() {
-        let patterns = extract_forbidden_patterns("不要把 `skip` 记为 `pass`");
+        let patterns = extract_forbidden_patterns("Do not record `skip` as `pass`");
         assert!(patterns.is_empty());
     }
 
     #[test]
     fn only_checks_explicit_structural_must_not_rules() {
+        // deliberate Chinese fixture: the Chinese MUST-NOT trigger phrases
+        // (and near-miss phrasing) are the test subject.
         assert!(is_structural_must_not("禁止使用 `.unwrap()`"));
         assert!(is_structural_must_not("Do not use `panic!`"));
         assert!(!is_structural_must_not(

@@ -341,15 +341,15 @@ name: "x"
 
 ## Completion Criteria
 
-### Rule: refund-idempotent — 退款幂等
-Scenario: 首次退款
+### Rule: refund-idempotent — Refunds are idempotent
+Scenario: First refund
   Test: test_first_refund
-  When 退款
-  Then 成功
-Scenario: 重复退款
+  When a refund is made
+  Then it succeeds
+Scenario: Repeated refund
   Test: test_dup_refund
-  When 再次退款
-  Then 不重复
+  When a refund is made again
+  Then it is not applied twice
 "#;
 
     #[test]
@@ -358,7 +358,7 @@ Scenario: 重复退款
         let index = idx(&["test_first_refund", "test_dup_refund"]);
         let report = VerificationReport::from_results(
             "x".into(),
-            vec![pass_result("首次退款"), pass_result("重复退款")],
+            vec![pass_result("First refund"), pass_result("Repeated refund")],
         );
         let m = build_coverage_matrix(&resolved, Some(&report), &index);
         assert_eq!(m.rows.len(), 2);
@@ -379,7 +379,7 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 悬挂
+Scenario: Dangling
   Test: test_does_not_exist_anywhere
   When a
   Then b
@@ -397,11 +397,11 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 子串
+Scenario: Substring
   Test: register
   When a
   Then b
-Scenario: 精确
+Scenario: Exact
   Test: test_register_returns_201
   When a
   Then b
@@ -409,8 +409,8 @@ Scenario: 精确
         let resolved = resolved_of(input);
         // Index has the full function name; "register" is only a substring.
         let m = build_coverage_matrix(&resolved, None, &idx(&["test_register_returns_201"]));
-        let substr = m.rows.iter().find(|r| r.scenario == "子串").unwrap();
-        let exact = m.rows.iter().find(|r| r.scenario == "精确").unwrap();
+        let substr = m.rows.iter().find(|r| r.scenario == "Substring").unwrap();
+        let exact = m.rows.iter().find(|r| r.scenario == "Exact").unwrap();
         assert_eq!(substr.test_found, TestFound::Missing);
         assert_eq!(exact.test_found, TestFound::Found);
     }
@@ -423,12 +423,12 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 无绑定
+Scenario: No binding
   When a
   Then b
 "#;
         let resolved = resolved_of(input);
-        let report = VerificationReport::from_results("x".into(), vec![skip_result("无绑定")]);
+        let report = VerificationReport::from_results("x".into(), vec![skip_result("No binding")]);
         let m = build_coverage_matrix(&resolved, Some(&report), &HashSet::new());
         assert_eq!(m.rows[0].test_selector, None);
         assert_eq!(m.rows[0].test_found, TestFound::None);
@@ -443,7 +443,7 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 未分组
+Scenario: Ungrouped
   Test: test_x
   When a
   Then b
@@ -462,14 +462,14 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: AI 场景
+Scenario: AI scenario
   When a
   Then b
 "#;
         let resolved = resolved_of(input);
         // Result has AiAnalysis evidence but provenance was never stamped.
         let result = ScenarioResult {
-            scenario_name: "AI 场景".into(),
+            scenario_name: "AI scenario".into(),
             verdict: Verdict::Uncertain,
             step_results: vec![],
             evidence: vec![Evidence::AiAnalysis {
@@ -522,13 +522,14 @@ Scenario: AI 场景
         let md = m.to_markdown();
         assert!(md.contains("| Rule | Scenario | Test | Found | Verdict | Provenance |"));
         assert!(md.contains("refund-idempotent"));
-        assert!(md.contains("首次退款"));
+        assert!(md.contains("First refund"));
     }
 
     #[test]
     fn test_matrix_json_is_machine_parseable() {
         let resolved = resolved_of(TWO_RULE_SCENARIOS);
-        let report = VerificationReport::from_results("x".into(), vec![pass_result("首次退款")]);
+        let report =
+            VerificationReport::from_results("x".into(), vec![pass_result("First refund")]);
         let m = build_coverage_matrix(&resolved, Some(&report), &idx(&["test_first_refund"]));
         let json = m.to_json();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -632,7 +633,7 @@ name: "x"
 
 ## Completion Criteria
 
-Scenario: 普通
+Scenario: Ordinary
   Test: test_x
   When a
   Then b
@@ -641,7 +642,7 @@ Scenario: 普通
         let report = VerificationReport::from_results(
             "x".into(),
             vec![
-                pass_result("普通"),
+                pass_result("Ordinary"),
                 ScenarioResult {
                     scenario_name: "[boundaries] explicit change set respects declared paths"
                         .into(),
