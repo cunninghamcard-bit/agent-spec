@@ -265,6 +265,7 @@ mod tests {
                     ],
                     lint_acks: vec![],
                     source_path: PathBuf::new(),
+                    source: String::new(),
                 },
                 inherited_constraints: vec![Constraint {
                     text: "禁止使用 unwrap".into(),

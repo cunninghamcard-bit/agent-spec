@@ -11,16 +11,41 @@ mod spec_verify;
 
 mod vcs;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::process::ExitCode;
 
-/// Check whether a path is a spec file (`.spec` or `.spec.md`).
+/// Check whether a path is a spec file (`.spec`, `.spec.md`, or goal `spec.md`).
 fn is_spec_file(p: &Path) -> bool {
     p.file_name()
         .and_then(|n| n.to_str())
-        .is_some_and(|n| n.ends_with(".spec") || n.ends_with(".spec.md"))
+        .is_some_and(|n| n == "spec.md" || n.ends_with(".spec") || n.ends_with(".spec.md"))
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum SddKind {
+    Feature,
+    Issue,
+    Architecture,
+}
+
+impl SddKind {
+    fn directory(self) -> &'static str {
+        match self {
+            Self::Feature => "features",
+            Self::Issue => "issues",
+            Self::Architecture => "architecture",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Feature => "feature",
+            Self::Issue => "issue",
+            Self::Architecture => "architecture",
+        }
+    }
 }
 
 #[derive(Parser)]
@@ -36,7 +61,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Parse .spec/.spec.md files and show AST
+    /// Parse .spec/.spec.md or goal spec.md files and show AST
     Parse {
         /// Spec files to parse
         files: Vec<PathBuf>,
@@ -159,18 +184,15 @@ enum Commands {
     },
     /// Create a starter .spec.md file
     Init {
-        /// Spec level: org, project, task
-        #[arg(long, default_value = "task")]
-        level: String,
-        /// Spec name
+        /// SDD goal name
         #[arg(long)]
-        name: Option<String>,
-        /// Language: zh, en, both
-        #[arg(long, default_value = "zh")]
-        lang: String,
-        /// Template profile: standard, rewrite-parity
-        #[arg(long, default_value = "standard")]
-        template: String,
+        name: String,
+        /// SDD goal kind
+        #[arg(long, value_enum)]
+        kind: SddKind,
+        /// Root directory for SDD goal packages
+        #[arg(long, default_value = "docs")]
+        root: PathBuf,
     },
     /// Run full lifecycle: lint -> verify -> report (for CI/agent use)
     Lifecycle {
@@ -226,7 +248,7 @@ enum Commands {
         #[arg(long, default_value = "text")]
         format: String,
     },
-    /// Git guard: lint all .spec/.spec.md files + verify against the selected git change scope
+    /// Git guard: lint all contract files + verify against the selected git change scope
     Guard {
         /// Spec directory to scan (repeatable)
         #[arg(long, default_value = "specs")]
@@ -387,12 +409,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             to,
             code,
         } => cmd_promote(&spec, &rule, &to, &code),
-        Commands::Init {
-            level,
-            name,
-            lang,
-            template,
-        } => cmd_init(&level, name.as_deref(), &lang, &template),
+        Commands::Init { name, kind, root } => cmd_init(&name, kind, &root),
         Commands::Lifecycle {
             spec,
             code,
@@ -2224,453 +2241,137 @@ fi
 
 // ── Helpers ─────────────────────────────────────────────────────
 
-fn cmd_init(
-    level: &str,
-    name: Option<&str>,
-    lang: &str,
-    template: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn cmd_init(name: &str, kind: SddKind, root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let output_dir = std::env::current_dir()?;
-    cmd_init_at(&output_dir, level, name, lang, template)
+    cmd_init_sdd_at(&output_dir, root, kind, name)
 }
 
-fn cmd_init_at(
+fn kebab_case(name: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let mut slug = String::new();
+    let mut separator = false;
+    for ch in name.trim().chars() {
+        if ch.is_alphanumeric() {
+            if separator && !slug.is_empty() {
+                slug.push('-');
+            }
+            slug.extend(ch.to_lowercase());
+            separator = false;
+        } else {
+            separator = true;
+        }
+    }
+    if slug.is_empty() {
+        return Err("SDD goal name must contain at least one letter or number".into());
+    }
+    Ok(slug)
+}
+
+fn cmd_init_sdd_at(
     output_dir: &Path,
-    level: &str,
-    name: Option<&str>,
-    lang: &str,
-    template: &str,
+    root: &Path,
+    kind: SddKind,
+    name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let spec_level = match level {
-        "org" => "org",
-        "project" => "project",
-        _ => "task",
+    let goal = kebab_case(name)?;
+    let goal_dir = output_dir.join(root).join(kind.directory()).join(&goal);
+    let artifacts = if matches!(kind, SddKind::Issue) {
+        vec![("spec.md", generate_sdd_spec(name, kind))]
+    } else {
+        vec![
+            ("spec.md", generate_sdd_spec(name, kind)),
+            ("plan.md", generate_sdd_plan(name)),
+            ("tasks.md", generate_sdd_tasks(name)),
+        ]
     };
 
-    let spec_name = name.unwrap_or("unnamed");
-    let template = match (lang, template) {
-        ("zh", "rewrite-parity") => generate_rewrite_parity_template_zh(spec_name),
-        ("both", "rewrite-parity") => generate_rewrite_parity_template_both(spec_name),
-        (_, "rewrite-parity") => generate_rewrite_parity_template_en(spec_name),
-        ("zh", _) => generate_template_zh(spec_level, spec_name),
-        ("both", _) => generate_template_both(spec_level, spec_name),
-        _ => generate_template_en(spec_level, spec_name),
-    };
+    for (filename, _) in &artifacts {
+        let path = goal_dir.join(filename);
+        if path.exists() {
+            return Err(
+                format!("refusing to overwrite existing artifact {}", path.display()).into(),
+            );
+        }
+    }
+    if goal_dir.exists() {
+        return Err(format!(
+            "refusing to update existing goal directory {}",
+            goal_dir.display()
+        )
+        .into());
+    }
 
-    let filename = format!("{spec_name}.spec.md");
-    let output_path = output_dir.join(&filename);
-    std::fs::write(&output_path, &template)?;
-    println!("created {}", output_path.display());
+    let parent = goal_dir
+        .parent()
+        .ok_or("SDD goal directory has no parent")?;
+    std::fs::create_dir_all(parent)?;
+    let temp_dir = parent.join(format!(".{goal}.agent-spec-tmp-{}", std::process::id()));
+    if temp_dir.exists() {
+        std::fs::remove_dir_all(&temp_dir)?;
+    }
+    std::fs::create_dir(&temp_dir)?;
 
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        for (filename, content) in &artifacts {
+            std::fs::write(temp_dir.join(filename), content)?;
+        }
+        std::fs::rename(&temp_dir, &goal_dir)?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        return result;
+    }
+
+    for (filename, _) in &artifacts {
+        println!("created {}", goal_dir.join(filename).display());
+    }
+    println!(
+        "next: agent-spec lint {}",
+        goal_dir.join("spec.md").display()
+    );
     Ok(())
 }
 
-fn generate_template_zh(level: &str, name: &str) -> String {
-    match level {
-        "org" => format!(
-            r#"spec: org
-name: "{name}"
----
-
-## Constraints
-
-- 禁止硬编码任何凭证、API Key、Token 或密码
-- 所有用户输入必须经过校验和清理
-- 所有错误必须使用结构化错误类型
-"#
-        ),
-        "project" => format!(
-            r#"spec: project
-name: "{name}"
-inherits: org
----
-
-## Intent
-
-在此描述项目的核心目标。
-
-## Constraints
-
-- 在此添加项目级约束
-"#
-        ),
-        _ => format!(
-            r#"spec: task
-name: "{name}"
-inherits: project
-tags: []
----
-
-## Intent
-
-在此描述任务目标和背景。
-
-## Current State
-
-在此描述相关代码的现状。
-
-## Decisions
-
-- 在此写明已经确定的技术选择
-
-## Boundaries
-
-### Allowed Changes
-- 在此列出允许修改的文件或模块
-
-### Forbidden
-- 在此列出禁止做的事情
-
-## Completion Criteria
-
-Scenario: 正常路径
-  Test:
-    Package: your-package
-    Filter: test_happy_path
-  Given 前置条件
-  When 用户执行操作
-  Then 期望结果
-
-Scenario: 异常路径
-  Test:
-    Package: your-package
-    Filter: test_error_path
-  Given 前置条件
-  When 用户执行异常操作
-  Then 系统返回错误
-
-## Out of Scope
-
-- 不在本任务范围内的功能
-
-## Open Questions
-
-None.
-"#
-        ),
-    }
-}
-
-fn generate_template_both(level: &str, name: &str) -> String {
-    match level {
-        "org" => format!(
-            r#"spec: org
-name: "{name}"
----
-
-## Constraints
-
-- Describe organization-wide constraints here.
-- 在此描述组织级约束。
-"#
-        ),
-        "project" => format!(
-            r#"spec: project
-name: "{name}"
-inherits: org
----
-
-## Intent
-
-Describe the core project goal here.
-在此描述项目的核心目标。
-
-## Constraints
-
-- Add project-level constraints here.
-- 在此添加项目级约束。
-"#
-        ),
-        _ => format!(
-            r#"spec: task
-name: "{name}"
-inherits: project
-tags: []
----
-
-## Intent
-
-Describe the task goal and context here.
-在此描述任务目标和背景。
-
-## Decisions
-
-- List the technical choices that are already decided.
-- 在此写明已经确定的技术选择。
-
-## Boundaries
-
-### Allowed Changes
-- List the files or modules that may be modified.
-- 在此列出允许修改的文件或模块。
-
-### Forbidden
-- List the things the agent must not do.
-- 在此列出禁止做的事情。
-
-## Completion Criteria
-
-Scenario: Happy path
-  Test:
-    Package: your-package
-    Filter: test_happy_path
-  Given a precondition
-  When the user performs an action
-  Then the expected result occurs
-
-Scenario: 异常路径
-  Test:
-    Package: your-package
-    Filter: test_error_path
-  Given 前置条件
-  When 用户执行异常操作
-  Then 系统返回错误
-
-## Out of Scope
-
-- Features not in scope for this task.
-- 不在本任务范围内的功能。
-
-## Open Questions
-
-None.
-"#
-        ),
-    }
-}
-
-fn generate_rewrite_parity_template_zh(name: &str) -> String {
+fn generate_sdd_spec(name: &str, kind: SddKind) -> String {
+    let current_state = if matches!(kind, SddKind::Issue) {
+        "### Impact\n\nDescribe the user or system impact.\n\n### Suspected Root Cause\n\nDescribe the suspected code path or root cause."
+    } else {
+        "Describe where the relevant code and documentation stand before this goal."
+    };
+    let decisions = if matches!(kind, SddKind::Issue) {
+        "### Fix Plan\n\n- Describe the smallest fix that addresses the root cause\n\n### Validation\n\n- Bind the regression to public E2E evidence"
+    } else {
+        "- List the technical and product choices that are already decided"
+    };
     format!(
         r#"spec: task
 name: "{name}"
 inherits: project
-tags: [rewrite, parity]
+tags: [{kind}, sdd]
 ---
 
 ## Intent
 
-将 `<待重写系统或命令>` 的可观察行为迁移到新实现，并在编码前绑定关键行为矩阵。
-
-## Decisions
-
-- 兼容性基线以 `<上游实现 / 现有 CLI / 现有 MCP>` 的可观察行为为准
-- 在写代码前先梳理行为矩阵：命令 x 输出模式、local x remote、warm cache x cold start、成功 x 部分失败 x 硬失败
-- 所有 stdout/stderr、`--json`、`-o/--output`、fallback / precedence order 都必须落成显式场景
-- 对外部 I/O 行为优先使用本地 stub 或 fixture 验证，不依赖真实网络或真实 HOME
-
-## Boundaries
-
-### Allowed Changes
-- 在此列出允许修改的适配层、运行时层和测试文件
-
-### Forbidden
-- 不要把兼容性要求只写成 prose；必须绑定到 Completion Criteria
-- 不要用新的用户可见行为替换现有行为，除非本任务明确声明要改 contract
-
-## Completion Criteria
-
-Scenario: 人类模式保持兼容输出
-  Test:
-    Package: your-package
-    Filter: test_human_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs, tests/cli_get.rs
-  Given `<命令>` 从已缓存内容读取结果
-  When 用户以默认人类模式执行命令
-  Then stdout 与兼容性基线保持一致
-  而且 stderr 不包含额外噪音
-
-Scenario: JSON 模式返回稳定结构
-  Test:
-    Package: your-package
-    Filter: test_json_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs
-  Given `<命令>` 以 `--json` 模式运行
-  When 用户请求同一份内容
-  Then stdout 只包含稳定 JSON
-  而且 省略字段策略与兼容性基线一致
-
-Scenario: 冷启动遵守 fallback 顺序
-  Test:
-    Package: your-package
-    Filter: test_cold_start_fallback_order
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/core/registry.rs
-  Given 本地正文缓存为空
-  When 系统解析 `<local source -> cache -> bundled content -> remote fetch>` 的读取路径
-  Then 每一步 fallback 顺序都可观察且稳定
-
-Scenario: 远端失败返回稳定错误
-  Test:
-    Package: your-package
-    Filter: test_remote_fetch_failure_contract
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/commands/update.rs
-  Given 远端返回非 2xx 或超时
-  When 系统执行远端读取或刷新
-  Then 返回稳定错误
-  而且 不写入损坏缓存或错误 freshness 元数据
-
-## Out of Scope
-
-- 本任务未明确声明的新增功能
-- 只为通过测试而修改兼容性基线本身
-"#
-    )
-}
-
-fn generate_rewrite_parity_template_both(name: &str) -> String {
-    format!(
-        r#"spec: task
-name: "{name}"
-inherits: project
-tags: [rewrite, parity]
----
-
-## Intent
-
-Port the observable behavior of `<system under rewrite>` to the new implementation and bind the key behavior matrix before coding.
-在编码前将 `<待重写系统或命令>` 的可观察行为迁移到新实现，并绑定关键行为矩阵。
-
-## Decisions
-
-- Treat `<upstream implementation / existing CLI / existing MCP>` as the compatibility baseline.
-- 将 `<上游实现 / 现有 CLI / 现有 MCP>` 作为兼容性基线。
-- Cover the behavior matrix before coding: command x output mode, local x remote, warm cache x cold start, success x partial failure x hard failure.
-- 在编码前覆盖行为矩阵：命令 x 输出模式、local x remote、warm cache x cold start、成功 x 部分失败 x 硬失败。
-- Bind stdout/stderr, `--json`, `-o/--output`, and fallback / precedence order as explicit scenarios.
-- 将 stdout/stderr、`--json`、`-o/--output`、fallback / precedence order 写成显式场景。
-
-## Boundaries
-
-### Allowed Changes
-- List the adapters, runtime modules, and tests that may change.
-- 在此列出允许修改的适配层、运行时层和测试文件。
-
-### Forbidden
-- Do not leave compatibility requirements as prose-only notes.
-- 不要把兼容性要求只写成 prose。
-- Do not replace current user-visible behavior unless this task explicitly changes the contract.
-- 不要在任务未声明时改写用户可见行为。
-
-## Completion Criteria
-
-Scenario: human mode keeps parity output
-  Test:
-    Package: your-package
-    Filter: test_human_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs, tests/cli_get.rs
-  Given `<command>` reads from cached content
-  When the user runs it in default human mode
-  Then stdout stays compatible with the baseline
-  And stderr does not contain extra noise
-
-Scenario: JSON 模式返回稳定结构
-  Test:
-    Package: your-package
-    Filter: test_json_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs
-  Given `<命令>` 以 `--json` 模式运行
-  When 用户请求同一份内容
-  Then stdout 只包含稳定 JSON
-  而且 省略字段策略与兼容性基线一致
-
-Scenario: cold start follows fallback order
-  Test:
-    Package: your-package
-    Filter: test_cold_start_fallback_order
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/core/registry.rs
-  Given local content cache is empty
-  When the system resolves `<local source -> cache -> bundled content -> remote fetch>`
-  Then each fallback step is observable and stable
-
-Scenario: 远端失败返回稳定错误
-  Test:
-    Package: your-package
-    Filter: test_remote_fetch_failure_contract
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/commands/update.rs
-  Given 远端返回非 2xx 或超时
-  When 系统执行远端读取或刷新
-  Then 返回稳定错误
-  而且 不写入损坏缓存或错误 freshness 元数据
-
-## Out of Scope
-
-- New features not explicitly declared by this task.
-- 本任务未明确声明的新增功能。
-- Changing the compatibility baseline itself just to make tests pass.
-- 不要为了通过测试而修改兼容性基线本身。
-"#
-    )
-}
-
-fn format_non_passing_summary(summary: &crate::spec_core::VerificationSummary) -> String {
-    format!(
-        "verification not passing: {} failed, {} skipped, {} uncertain, {} pending_review",
-        summary.failed, summary.skipped, summary.uncertain, summary.pending_review,
-    )
-}
-
-fn generate_template_en(level: &str, name: &str) -> String {
-    match level {
-        "org" => format!(
-            r#"spec: org
-name: "{name}"
----
-
-## Constraints
-
-- No hardcoded credentials, API keys, tokens, or passwords
-- All user input must be validated and sanitized
-- All errors must use structured error types
-"#
-        ),
-        "project" => format!(
-            r#"spec: project
-name: "{name}"
-inherits: org
----
-
-## Intent
-
-Describe the core project goal here.
-
-## Constraints
-
-- Add project-level constraints here
-"#
-        ),
-        _ => format!(
-            r#"spec: task
-name: "{name}"
-inherits: project
-tags: []
----
-
-## Intent
-
-Describe the task goal and context here.
+Describe the user need, goal, and why this work matters.
 
 ## Current State
 
-Describe where the relevant code stands before this task.
+{current_state}
+
+## UX Shape
+
+```plantuml
+@startuml
+actor User
+participant System
+User -> System: describe the required interaction
+System --> User: describe the observable result
+@enduml
+```
 
 ## Decisions
 
-- List the technical choices that are already decided
+{decisions}
 
 ## Boundaries
 
@@ -2685,113 +2386,126 @@ Describe where the relevant code stands before this task.
 Scenario: Happy path
   Test:
     Package: your-package
-    Filter: test_happy_path
-  Given a precondition
-  When the user performs an action
-  Then the expected result occurs
+    Filter: test_happy_path_e2e
+    Level: e2e
+  Given a user-visible precondition
+  When the user performs the supported action
+  Then the observable result occurs
 
 Scenario: Error path
   Test:
     Package: your-package
-    Filter: test_error_path
-  Given a precondition
-  When the user performs an invalid action
-  Then the system returns an error
+    Filter: test_error_path_e2e
+    Level: e2e
+  Given an invalid or unavailable precondition
+  When the user performs the action
+  Then the observable error is returned without partial side effects
 
 ## Out of Scope
 
-- Features not in scope for this task
+- List behavior intentionally excluded from this goal
 
 ## Open Questions
 
 None.
-"#
-        ),
-    }
+"#,
+        kind = kind.label()
+    )
 }
 
-fn generate_rewrite_parity_template_en(name: &str) -> String {
+fn generate_sdd_plan(name: &str) -> String {
     format!(
-        r#"spec: task
-name: "{name}"
-inherits: project
-tags: [rewrite, parity]
+        r#"---
+artifact: plan
+goal: "{name}"
+status: draft
+derived_from: spec.md
 ---
 
-## Intent
+# {name} Implementation Plan
 
-Port the observable behavior of `<system under rewrite>` to the new implementation and bind the key behavior matrix before coding.
+> `spec.md` is authoritative. This plan may choose an implementation but must not redefine the contract.
 
-## Decisions
+## Approach
 
-- Treat `<upstream implementation / existing CLI / existing MCP>` as the compatibility baseline
-- Cover the behavior matrix before coding: command x output mode, local x remote, warm cache x cold start, success x partial failure x hard failure
-- Bind stdout/stderr, `--json`, `-o/--output`, and fallback / precedence order as explicit scenarios
-- Prefer local stubs or fixtures for external I/O verification instead of real network or real HOME state
+Describe the smallest implementation that satisfies the contract.
 
-## Boundaries
+## Affected Interfaces
 
-### Allowed Changes
-- List the adapters, runtime modules, and tests that may change
+- List code, APIs, storage, and documentation boundaries.
 
-### Forbidden
-- Do not leave compatibility requirements as prose-only notes
-- Do not replace current user-visible behavior unless this task explicitly changes the contract
+## Data and Control Flow
 
-## Completion Criteria
+```plantuml
+@startuml
+participant Caller
+participant System
+Caller -> System: request
+System --> Caller: result
+@enduml
+```
 
-Scenario: human mode keeps parity output
-  Test:
-    Package: your-package
-    Filter: test_human_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs, tests/cli_get.rs
-  Given `<command>` reads from cached content
-  When the user runs it in default human mode
-  Then stdout stays compatible with the baseline
-  And stderr does not contain extra noise
+## Compatibility and Migration
 
-Scenario: json mode returns a stable payload
-  Test:
-    Package: your-package
-    Filter: test_json_mode_parity
-    Level: cli
-    Test Double: fixture_cache
-    Targets: src/commands/get.rs
-  Given `<command>` runs with `--json`
-  When the user requests the same content
-  Then stdout contains stable JSON only
-  And field omission rules stay compatible with the baseline
+Describe compatibility requirements or state that none are needed.
 
-Scenario: cold start follows fallback order
-  Test:
-    Package: your-package
-    Filter: test_cold_start_fallback_order
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/core/registry.rs
-  Given local content cache is empty
-  When the system resolves `<local source -> cache -> bundled content -> remote fetch>`
-  Then each fallback step is observable and stable
+## Test Strategy
 
-Scenario: remote failure returns a stable error
-  Test:
-    Package: your-package
-    Filter: test_remote_fetch_failure_contract
-    Level: integration
-    Test Double: local_http_stub
-    Targets: src/core/cache.rs, src/commands/update.rs
-  Given the remote endpoint returns non-2xx or times out
-  When the system performs a remote read or refresh
-  Then it returns a stable error
-  And it does not write corrupt cache or incorrect freshness metadata
+Map every Scenario in `spec.md` to public E2E evidence; add focused lower-level tests only where useful.
 
-## Out of Scope
+## Risks
 
-- New features not explicitly declared by this task
-- Changing the compatibility baseline itself just to make tests pass
+- List concrete risks and mitigations.
 "#
+    )
+}
+
+fn generate_sdd_tasks(name: &str) -> String {
+    format!(
+        r#"---
+artifact: tasks
+goal: "{name}"
+status: active
+derived_from:
+  - spec.md
+  - plan.md
+---
+
+# {name} Tasks
+
+> Link each implementation task to a Scenario name or Test selector from `spec.md`.
+
+## Review Gate
+
+- [ ] Review `spec.md` and resolve every open question.
+- [ ] Review `plan.md` against the authoritative contract.
+
+## Implementation
+
+- [ ] Add the smallest implementation slice. Covers: `<Scenario or Test selector>`
+
+## Tests
+
+- [ ] Add public E2E evidence for every Scenario.
+- [ ] Run focused tests for changed behavior.
+
+## Documentation Impact
+
+- [ ] Update affected maintained documentation or record why no update is required.
+
+## Quality Gates
+
+- [ ] `agent-spec lint spec.md --min-score 0.7`
+- [ ] `agent-spec lifecycle spec.md --code .`
+- [ ] `agent-spec guard --spec-dir . --code .`
+"#
+    )
+}
+
+fn format_non_passing_summary(summary: &crate::spec_core::VerificationSummary) -> String {
+    format!(
+        "verification not passing: {} failed, {} skipped, {} uncertain, {} pending_review",
+        summary.failed, summary.skipped, summary.uncertain, summary.pending_review,
     )
 }
 
@@ -3249,10 +2963,8 @@ mod tests {
 
     use super::{
         GitChangeScope, ResumeMode, RunLogEntry, build_stamp_trailers, checkpoint_path,
-        cmd_init_at, generate_rewrite_parity_template_both, generate_rewrite_parity_template_en,
-        generate_rewrite_parity_template_zh, generate_template_both, generate_template_en,
-        generate_template_zh, is_spec_file, load_checkpoint, merge_checkpoint_results,
-        parse_ai_mode, render_brief_output, render_contract_output, resolve_command_change_paths,
+        is_spec_file, load_checkpoint, merge_checkpoint_results, parse_ai_mode,
+        render_brief_output, render_contract_output, resolve_command_change_paths,
         resolve_guard_change_paths, save_checkpoint, vcs, warn_duplicate_spec_extensions,
     };
     use super::{
@@ -3980,114 +3692,6 @@ Scenario: Contract alias
     }
 
     #[test]
-    fn test_init_task_template_includes_sdd_sections() {
-        let template = super::generate_template_en("task", "demo");
-        assert!(template.contains("## Current State"), "{template}");
-        assert!(template.contains("## Open Questions"), "{template}");
-        assert!(template.contains("None."), "{template}");
-    }
-
-    #[test]
-    fn test_generated_task_templates_parse_for_zh_en_and_both() {
-        for lang in [
-            generate_template_zh("task", "模板"),
-            generate_template_en("task", "Template"),
-            generate_template_both("task", "Bilingual"),
-            generate_rewrite_parity_template_zh("重写模板"),
-            generate_rewrite_parity_template_en("Rewrite Template"),
-            generate_rewrite_parity_template_both("Bilingual Rewrite"),
-        ] {
-            let doc = crate::spec_parser::parse_spec_from_str(&lang).unwrap();
-            let scenario_count = doc
-                .sections
-                .iter()
-                .filter_map(|section| match section {
-                    crate::spec_core::Section::AcceptanceCriteria { scenarios, .. } => {
-                        Some(scenarios.len())
-                    }
-                    _ => None,
-                })
-                .sum::<usize>();
-            assert!(scenario_count > 0, "task template should contain scenarios");
-        }
-    }
-
-    #[test]
-    fn test_rewrite_parity_init_templates_include_behavior_matrix_and_verification_metadata() {
-        for template in [
-            generate_rewrite_parity_template_zh("重写模板"),
-            generate_rewrite_parity_template_en("Rewrite Template"),
-            generate_rewrite_parity_template_both("Bilingual Rewrite"),
-        ] {
-            assert!(
-                template.contains("command x output mode") || template.contains("命令 x 输出模式")
-            );
-            assert!(
-                template.contains("local x remote")
-                    || template
-                        .contains("local source -> cache -> bundled content -> remote fetch")
-            );
-            assert!(template.contains("Level:"));
-            assert!(template.contains("Test Double:"));
-            assert!(template.contains("Targets:"));
-        }
-    }
-
-    #[test]
-    fn test_init_command_writes_rewrite_parity_template_file() {
-        let dir = make_temp_dir("agent-spec-init-rewrite-parity");
-        cmd_init_at(
-            &dir,
-            "task",
-            Some("cli-parity-contract"),
-            "en",
-            "rewrite-parity",
-        )
-        .unwrap();
-        let content = fs::read_to_string(dir.join("cli-parity-contract.spec.md")).unwrap();
-        let parsed = crate::spec_parser::parse_spec_from_str(&content).unwrap();
-
-        assert!(content.contains("tags: [rewrite, parity]"));
-        assert!(content.contains("command x output mode"));
-        assert!(content.contains("Test Double:"));
-        assert!(content.contains("Targets:"));
-        assert!(parsed.sections.iter().any(|section| matches!(
-            section,
-            crate::spec_core::Section::AcceptanceCriteria { .. }
-        )));
-
-        let cli = super::Cli::parse_from([
-            "agent-spec",
-            "init",
-            "--level",
-            "task",
-            "--template",
-            "rewrite-parity",
-            "--lang",
-            "en",
-            "--name",
-            "cli-parity-contract",
-        ]);
-
-        match cli.command {
-            super::Commands::Init {
-                level,
-                lang,
-                template,
-                name,
-            } => {
-                assert_eq!(level, "task");
-                assert_eq!(lang, "en");
-                assert_eq!(template, "rewrite-parity");
-                assert_eq!(name.as_deref(), Some("cli-parity-contract"));
-            }
-            _ => panic!("expected init command"),
-        }
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
     fn test_readme_documents_claude_code_tool_first_skills() {
         let readme = fs::read_to_string(repo_root().join("README.md")).unwrap();
 
@@ -4105,7 +3709,7 @@ Scenario: Contract alias
         assert!(readme.contains("examples/rewrite-parity-contract.spec"));
         assert!(readme.contains("command x output mode"));
         assert!(readme.contains("local x remote"));
-        assert!(readme.contains("--template rewrite-parity"));
+        assert!(readme.contains("init --kind architecture"));
     }
 
     #[test]
@@ -5060,14 +4664,6 @@ Scenario: verification metadata stays visible
     }
 
     #[test]
-    fn test_init_creates_spec_md_by_default() {
-        let dir = make_temp_dir("init-spec-md");
-        cmd_init_at(&dir, "task", Some("test-task"), "en", "default").unwrap();
-        assert!(dir.join("test-task.spec.md").exists());
-        assert!(!dir.join("test-task.spec").exists());
-    }
-
-    #[test]
     fn test_boundary_checker_recognizes_spec_md() {
         // The boundary checker uses looks_like_path_boundary (private).
         // We verify indirectly: parse a spec with .spec.md in allowed changes,
@@ -5122,8 +4718,21 @@ Scenario: pass
     fn test_plain_md_files_not_matched_as_spec() {
         assert!(!is_spec_file(Path::new("notes.md")));
         assert!(!is_spec_file(Path::new("README.md")));
+        assert!(is_spec_file(Path::new("spec.md")));
         assert!(is_spec_file(Path::new("task.spec.md")));
         assert!(is_spec_file(Path::new("task.spec")));
+    }
+
+    #[test]
+    fn test_guard_collects_fixed_goal_spec_filename() {
+        let dir = make_temp_dir("guard-goal-spec-md");
+        fs::write(dir.join("spec.md"), "spec: task\nname: goal\n---\n").unwrap();
+        fs::write(dir.join("plan.md"), "# Plan\n").unwrap();
+        fs::write(dir.join("tasks.md"), "# Tasks\n").unwrap();
+
+        let files = super::collect_guard_spec_files(std::slice::from_ref(&dir)).unwrap();
+        assert_eq!(files, vec![dir.join("spec.md")]);
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

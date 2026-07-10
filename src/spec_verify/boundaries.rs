@@ -157,19 +157,18 @@ fn collect_path_boundaries(sections: &[crate::spec_core::Section]) -> (Vec<Strin
 }
 
 fn looks_like_path_boundary(text: &str) -> bool {
-    let trimmed = text.trim();
+    let trimmed = text.trim().trim_matches('`');
+    // Path shapes: anything with separators or globs, or a single
+    // whitespace-free token containing a dot (`Cargo.toml`, `.cursorrules`,
+    // `install-skills.sh`). Natural-language prohibitions contain spaces and
+    // stay prose. ponytail: extensionless bare names like `Makefile` are not
+    // detected; write them as `./Makefile` if they must be path boundaries.
     trimmed.contains('/')
         || trimmed.contains('\\')
         || trimmed.contains('*')
-        || trimmed.ends_with(".rs")
-        || trimmed.ends_with(".ts")
-        || trimmed.ends_with(".js")
-        || trimmed.ends_with(".py")
-        || trimmed.ends_with(".spec")
-        || trimmed.ends_with(".spec.md")
-        || trimmed.ends_with(".toml")
-        || trimmed.ends_with(".lock")
-        || trimmed.ends_with(".md")
+        || (!trimmed.is_empty()
+            && !trimmed.chars().any(char::is_whitespace)
+            && trimmed.contains('.'))
 }
 
 fn normalize_change_paths(paths: &[PathBuf], workspace_root: Option<&Path>) -> Vec<String> {
@@ -556,6 +555,40 @@ name: "边界"
     }
 
     #[test]
+    fn test_boundary_bare_dotted_filenames_are_path_boundaries() {
+        let resolved = make_resolved_spec(
+            r#"spec: task
+name: "boundary"
+---
+
+## Boundaries
+
+### Allowed Changes
+- .cursorrules
+- install-skills.sh
+- src/**
+"#,
+        )
+        .unwrap();
+
+        let verifier = BoundariesVerifier::default();
+        let results = verifier
+            .verify(&VerificationContext {
+                code_paths: vec![PathBuf::from(".")],
+                change_paths: vec![
+                    PathBuf::from(".cursorrules"),
+                    PathBuf::from("install-skills.sh"),
+                ],
+                ai_mode: AiMode::Off,
+                resolved_spec: resolved,
+            })
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Pass);
+    }
+
+    #[test]
     fn test_boundary_absolute_change_paths_relativized_against_workspace_root() {
         let resolved = make_resolved_spec(
             r#"spec: task
@@ -610,6 +643,7 @@ name: "边界"
                 sections: vec![],
                 lint_acks: vec![],
                 source_path: PathBuf::new(),
+                source: String::new(),
             },
             inherited_constraints: Vec::new(),
             inherited_decisions: Vec::new(),

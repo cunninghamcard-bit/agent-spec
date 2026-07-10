@@ -2,11 +2,12 @@
 
 ## Workflow
 
-1. Read the contract: `agent-spec contract specs/<task>.spec`
-2. Implement against the contract's Intent, Decisions, and Boundaries
-3. Verify: `agent-spec lifecycle specs/<task>.spec --code . --format json`
-4. Guard: `agent-spec guard --spec-dir specs --code .`
-5. Review: `agent-spec explain specs/<task>.spec --code . --format markdown`
+1. For substantial work without a contract, create one through the CLI: `agent-spec init --kind feature|issue|architecture --name <goal>`
+2. Read the contract: `agent-spec contract <spec>`
+3. Implement against the contract's Intent, Decisions, and Boundaries
+4. Verify: `agent-spec lifecycle <spec> --code . --format json`
+5. Guard: `agent-spec guard --spec-dir specs --code .`
+6. Review: `agent-spec explain <spec> --code . --format markdown`
 
 ## Key Commands
 

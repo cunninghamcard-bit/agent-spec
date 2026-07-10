@@ -20,7 +20,7 @@ agent-spec:   Write Contract (60%) → Agent codes (0%) → Read explain (30%) �
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `agent-spec init` | Scaffold new spec | Starting a new task |
+| `agent-spec init --kind feature|issue|architecture --name <goal>` | Create an SDD goal package | Starting substantial work without a contract |
 | `agent-spec contract <spec>` | Render Task Contract | Before coding - read the execution plan |
 | `agent-spec lint <files>` | Spec quality check | After writing spec |
 | `agent-spec lifecycle <spec> --code .` | Full lint + verify pipeline | After edits - main quality gate |
@@ -203,6 +203,7 @@ Constraints and decisions inherit downward. Both `.spec` and `.spec.md` extensio
 ### Conventions
 
 - Task specs live in `specs/`
+- Substantial feature and architecture goals use CLI-generated `spec.md`, `plan.md`, and `tasks.md` packages under `docs/`; `spec.md` is authoritative
 - Roadmap specs go in `specs/roadmap/`, promote to `specs/` when active
 - Verdicts: pass, fail, skip, uncertain — all four are distinct
 - **skip ≠ pass**: skipped scenarios block the pipeline

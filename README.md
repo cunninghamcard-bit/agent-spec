@@ -96,21 +96,18 @@ Scenario: 全额退款保持现有返回结构
 Start from a template:
 
 ```bash
-cargo run -q --bin agent-spec -- init --level task --lang en --name "User Registration API"
+cargo run -q --bin agent-spec -- init --kind feature --name "User Registration API"
 ```
 
-For rewrite/parity tasks, start from the parity-aware task template:
-
-```bash
-cargo run -q --bin agent-spec -- init --level task --template rewrite-parity --lang en --name "CLI Parity Contract"
-```
-
-Or study the examples in [`examples/`](examples).
+For rewrite/parity work, start with `--kind architecture` and use
+[`examples/rewrite-parity-contract.spec`](examples/rewrite-parity-contract.spec)
+as an authoring reference. Structural keywords and generated templates are English-only.
 
 ### AI Agent Skills
 
-This repo ships three agent skills under [`skills/`](skills):
+This repo ships four agent skills under [`skills/`](skills):
 
+- **`agent-spec-sdd`**: classifies substantial work and drives the DeepChat-inspired feature/issue/architecture goal-package workflow through the CLI.
 - **`agent-spec-tool-first`**: the default integration path — tells the agent to use `agent-spec` as a CLI tool and drive tasks through `contract`, `lifecycle`, and `guard`.
 - **`agent-spec-authoring`**: the authoring path — helps write or revise Task Contracts in the DSL.
 - **`agent-spec-estimate`**: the estimation path — maps Task Contract elements (scenarios, decisions, boundaries) to round-based effort estimates.
@@ -130,12 +127,13 @@ See [`examples/rewrite-parity-contract.spec`](examples/rewrite-parity-contract.s
 ./install-skills.sh
 ```
 
-This installs the `agent-spec` CLI via `cargo install` (if not already present) and copies all three skills to `~/.claude/skills/`.
+This installs the `agent-spec` CLI via `cargo install` (if not already present) and copies all four skills to `~/.claude/skills/`.
 
 #### Manual install for Claude Code
 
 ```bash
 # Copy to your global skills directory
+cp -r skills/agent-spec-sdd ~/.claude/skills/
 cp -r skills/agent-spec-tool-first ~/.claude/skills/
 cp -r skills/agent-spec-authoring ~/.claude/skills/
 cp -r skills/agent-spec-estimate ~/.claude/skills/
@@ -144,6 +142,7 @@ cp -r skills/agent-spec-estimate ~/.claude/skills/
 Or symlink for auto-updates:
 
 ```bash
+ln -s "$(pwd)/skills/agent-spec-sdd" ~/.claude/skills/
 ln -s "$(pwd)/skills/agent-spec-tool-first" ~/.claude/skills/
 ln -s "$(pwd)/skills/agent-spec-authoring" ~/.claude/skills/
 ln -s "$(pwd)/skills/agent-spec-estimate" ~/.claude/skills/
@@ -294,13 +293,21 @@ Specs without `test_command` keep the existing cargo behavior unchanged.
 
 ## SDD Workflow (goal folders)
 
-For substantial work, keep spec-driven-development artifacts in one kebab-case folder per goal (a convention adopted from DeepChat's SDD):
+For substantial work, use the dedicated `agent-spec-sdd` skill or invoke the CLI directly:
+
+```bash
+agent-spec init --kind feature --name "Plugins Hub"
+agent-spec init --kind issue --name "Session Restore Jitter"
+agent-spec init --kind architecture --name "Agent Runtime Split"
+```
+
+The CLI creates one kebab-case folder per goal (a convention adapted from DeepChat's SDD):
 
 - `docs/features/<goal>/` — new features and user-visible capabilities
 - `docs/issues/<goal>/` — complex bug fixes and regressions
 - `docs/architecture/<goal>/` — refactors, migrations, cross-module design
 
-Put the machine-verifiable contract next to the goal (e.g. `docs/features/<goal>/<goal>.spec.md`) or keep it in `specs/`. `guard --spec-dir` is repeatable, so both layouts gate together:
+Feature and architecture packages contain authoritative `spec.md` plus implementation `plan.md` and execution `tasks.md`; issue packages contain one comprehensive `spec.md`. PlantUML stays inside Markdown fences. `guard --spec-dir` is repeatable, so goal folders and `specs/` can gate together:
 
 ```bash
 agent-spec guard --spec-dir specs --spec-dir docs/features/my-goal --code .
@@ -309,7 +316,7 @@ agent-spec guard --spec-dir specs --spec-dir docs/features/my-goal --code .
 Draft the plan file mechanically, then refine it by hand:
 
 ```bash
-agent-spec plan specs/my-goal.spec.md --code . --format prompt --out docs/features/my-goal/plan.md
+agent-spec plan docs/features/my-goal/spec.md --code . --format prompt --out docs/features/my-goal/plan.md
 ```
 
 Contract anatomy for SDD work: use `## Current State` (where the code stands — spares the agent code archaeology), `## UX Shape` (ASCII interface sketches), and `## Open Questions`. A bracketed NEEDS-CLARIFICATION marker anywhere in a spec is an error-level lint — resolve every ambiguity before implementation.
@@ -475,20 +482,20 @@ agent-spec is self-bootstrapping: the project uses itself to govern its own deve
 
 ### The contribution flow
 
-Every change starts with a Task Contract. Before writing code, create a `.spec.md` file in `specs/` that defines what you're building — the intent, the technical decisions that are already fixed, the files you'll touch, and the BDD scenarios that define "done." Then implement against the Contract and verify with `lifecycle`. (Legacy `.spec` files are also supported.)
+Every substantial change starts with a Task Contract. Before writing code, create a classified goal package that defines what you're building — the intent, the technical decisions that are already fixed, the files you'll touch, and the BDD scenarios that define "done." Then implement against the Contract and verify with `lifecycle`.
 
 ```bash
 # 1. Create a task contract for your change
-agent-spec init --level task --lang en --name "my-feature"
+agent-spec init --kind feature --name "my-feature"
 # Edit the generated spec: fill in Intent, Decisions, Boundaries, Completion Criteria
 
 # 2. Check that the contract itself is well-written
-agent-spec lint specs/my-feature.spec.md --min-score 0.7
+agent-spec lint docs/features/my-feature/spec.md --min-score 0.7
 
 # 3. Implement your change
 
 # 4. Verify against the contract
-agent-spec lifecycle specs/my-feature.spec.md --code . --change-scope worktree --format json
+agent-spec lifecycle docs/features/my-feature/spec.md --code . --change-scope worktree --format json
 
 # 5. Run the repo-wide guard before committing
 agent-spec guard --spec-dir specs --code .

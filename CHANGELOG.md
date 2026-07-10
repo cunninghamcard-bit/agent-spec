@@ -8,6 +8,11 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Changed (BREAKING)
 
+- **`init` is goal-oriented and English-only.** `--kind` and `--name` are now
+  required. The legacy `--level`, `--lang`, and `--template` options and
+  single-file scaffold were removed; init always creates a classified SDD
+  goal package.
+
 - **English-only structural keywords (0.4.0).** Adopting the specwright
   fork's judgment: the parser hard-rejects CJK structural keywords (section
   headers, `场景:`/`测试:`/`包:`/`过滤:`, step keywords 假设/当/那么/并且/但是,
@@ -18,6 +23,14 @@ All notable changes to `agent-spec` are documented here. Format follows
   is migrated, and a regression test keeps it English-only.
 
 ### Added
+
+- **DeepChat-style SDD goal packages.** `agent-spec init --kind
+  feature|issue|architecture --name <goal>` creates readable Markdown under
+  `docs/`: feature and architecture receive `spec.md`, `plan.md`, and
+  `tasks.md`; issues receive a comprehensive `spec.md`. Fixed-name `spec.md`
+  participates in guard collection, existing artifacts are never overwritten,
+  and the new `agent-spec-sdd` skill keeps the workflow CLI-driven and
+  BDD/E2E-first.
 
 - **SDD integration (DeepChat-inspired).** New contract sections
   `## Current State` and `## UX Shape` (informational, rendered in the

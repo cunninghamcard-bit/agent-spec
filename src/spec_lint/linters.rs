@@ -544,11 +544,23 @@ impl SpecLinter for ScenarioPresenceLinter {
 // SDD linters: needs-clarification (error) and open-questions (warning)
 // =============================================================================
 
-/// Errors on unresolved `[NEEDS CLARIFICATION` markers anywhere in the spec's
-/// text. A contract must resolve every ambiguity before it can pass the gate.
+/// Errors on unresolved `[NEEDS CLARIFICATION` / `[NEEDS-CLARIFICATION`
+/// markers anywhere in a spec, including front-matter and comments.
 pub struct NeedsClarificationLinter;
 
-const NEEDS_CLARIFICATION_MARKER: &str = "[NEEDS CLARIFICATION";
+fn has_needs_clarification_marker(text: &str) -> bool {
+    text.split('`').step_by(2).any(|prose| {
+        let prose = prose.to_ascii_lowercase();
+        [
+            "[needs clarification",
+            "[needs-clarification",
+            "<!-- needs clarification",
+            "<!-- needs-clarification",
+        ]
+        .iter()
+        .any(|marker| prose.contains(marker))
+    })
+}
 
 impl SpecLinter for NeedsClarificationLinter {
     fn name(&self) -> &str {
@@ -557,54 +569,25 @@ impl SpecLinter for NeedsClarificationLinter {
 
     fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
         let mut diags = Vec::new();
-
-        let mut check = |text: &str, span: &crate::spec_core::Span| {
-            if text.contains(NEEDS_CLARIFICATION_MARKER) {
+        let mut in_fence = false;
+        for (line, text) in doc.source.lines().enumerate() {
+            if text.trim_start().starts_with("```") || text.trim_start().starts_with("~~~") {
+                in_fence = !in_fence;
+                continue;
+            }
+            if in_fence {
+                continue;
+            }
+            if has_needs_clarification_marker(text) {
                 diags.push(LintDiagnostic {
                     rule: "needs-clarification".into(),
                     severity: Severity::Error,
                     message: "unresolved [NEEDS CLARIFICATION] marker".into(),
-                    span: *span,
+                    span: crate::spec_core::Span::line(line + 1),
                     suggestion: Some(
                         "resolve the ambiguity and remove the marker before implementation".into(),
                     ),
                 });
-            }
-        };
-
-        for section in &doc.sections {
-            match section {
-                Section::Intent { content, span }
-                | Section::CurrentState { content, span }
-                | Section::UxShape { content, span } => check(content, span),
-                Section::Decisions { items, span } | Section::OutOfScope { items, span } => {
-                    for item in items {
-                        check(item, span);
-                    }
-                }
-                Section::Questions { items, span } => {
-                    for item in items {
-                        check(item, span);
-                    }
-                }
-                Section::Constraints { items, span } => {
-                    for item in items {
-                        check(&item.text, span);
-                    }
-                }
-                Section::Boundaries { items, span } => {
-                    for item in items {
-                        check(&item.text, span);
-                    }
-                }
-                Section::AcceptanceCriteria { scenarios, .. } => {
-                    for scenario in scenarios {
-                        check(&scenario.name, &scenario.span);
-                        for step in &scenario.steps {
-                            check(&step.text, &step.span);
-                        }
-                    }
-                }
             }
         }
 
@@ -2475,6 +2458,61 @@ Scenario: ok
         // Error-level diagnostics gate lifecycle via the pipeline report.
         let report = crate::spec_lint::LintPipeline::with_defaults().run(&doc);
         assert!(report.has_errors());
+    }
+
+    #[test]
+    fn test_lint_needs_clarification_scans_comments_and_front_matter() {
+        let spec = r#"spec: task
+name: "[NEEDS-CLARIFICATION: choose a name]"
+---
+
+## Intent
+
+Add login.
+
+<!-- needs clarification: choose an auth flow -->
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a thing
+  When it runs
+  Then it passes
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        let diags = NeedsClarificationLinter.lint(&doc);
+        assert_eq!(diags.len(), 2);
+        assert_eq!(diags[0].span.start_line, 2);
+        assert_eq!(diags[1].span.start_line, 9);
+    }
+
+    #[test]
+    fn test_lint_needs_clarification_ignores_documented_marker_examples() {
+        let spec = r#"spec: task
+name: "marker docs"
+---
+
+## Intent
+
+Document `<!-- NEEDS CLARIFICATION -->` without opening a question.
+
+## UX Shape
+
+```text
+[NEEDS-CLARIFICATION: example only]
+```
+
+## Completion Criteria
+
+Scenario: ok
+  Test: test_ok
+  Given a documented marker
+  When lint runs
+  Then no unresolved marker is reported
+"#;
+        let doc = crate::spec_parser::parse_spec_from_str(spec).unwrap();
+        assert!(NeedsClarificationLinter.lint(&doc).is_empty());
     }
 
     #[test]

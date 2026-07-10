@@ -48,7 +48,7 @@ Humans define "what is correct" (Contract). Machines verify "is the code correct
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `agent-spec init` | Scaffold new spec | Starting a new task |
+| `agent-spec init --kind feature|issue|architecture` | Create an SDD goal package | After `agent-spec-sdd` classifies substantial work |
 | `agent-spec contract <spec>` | Render Task Contract | Before coding - read the execution plan |
 | `agent-spec plan <spec> --code .` | Generate plan context | Before coding - codebase scan + task sketch |
 | `agent-spec lint <files>` | Spec quality check | After writing spec, before giving to Agent |
@@ -80,15 +80,17 @@ Refer to the local files for detailed command patterns:
 
 Not a vague Issue — a structured Contract with Intent, Decisions, Boundaries, Completion Criteria.
 
+For substantial goal-folder work, use the dedicated `agent-spec-sdd` skill to classify the goal and invoke `init --kind`. This tool-first skill remains responsible for exact CLI execution, verdict interpretation, and retry behavior.
+
 ```bash
-agent-spec init --level task --lang zh --name "用户注册API"
-# Then fill in the four elements in the generated .spec.md file
+agent-spec init --kind feature --name "User Registration API"
+# Then author the generated spec.md; structural keywords are English-only
 ```
 
-For rewrite, migration, or parity tasks, prefer the parity-aware scaffold:
+For rewrite, migration, or parity tasks, classify the goal as architecture and use the parity example as an authoring reference:
 
 ```bash
-agent-spec init --level task --template rewrite-parity --lang en --name "CLI Parity Contract"
+agent-spec init --kind architecture --name "CLI Parity Contract"
 ```
 
 **Key principle**: Exception scenarios >= happy path scenarios. 1 happy + 3 error paths forces you to think through edge cases before coding begins.

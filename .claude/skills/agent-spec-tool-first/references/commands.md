@@ -129,8 +129,13 @@ Built-in linters: VagueVerb, Unquantified, Testability, Coverage, Determinism, I
 ## init
 
 ```bash
-agent-spec init [--level org|project|task] [--name <name>] [--lang zh|en|both]
+agent-spec init --kind feature|issue|architecture [--root docs] --name <goal>
 ```
+
+Both `--kind` and `--name` are required. Init creates a DeepChat-style goal
+package: feature and architecture receive `spec.md`, `plan.md`, and
+`tasks.md`; issue receives `spec.md`. Generated structural keywords are
+English-only.
 
 ## Change Set Defaults
 

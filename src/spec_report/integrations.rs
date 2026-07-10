@@ -9,13 +9,15 @@ pub fn integration_body() -> String {
     "\
 agent-spec is an AI-native BDD/spec verification tool. Use it tool-first:\n\
 \n\
-1. Read the Task Contract: `agent-spec contract <spec>`.\n\
-2. Generate plan context: `agent-spec plan <spec> --code . --format prompt`.\n\
-3. Implement within the contract's Boundaries.\n\
-4. Verify: `agent-spec lifecycle <spec> --code . --format json` — fix until all\n\
+1. For substantial new work without a contract, create the CLI-owned goal package:\n\
+   `agent-spec init --kind feature|issue|architecture --name <goal>`.\n\
+2. Read the Task Contract: `agent-spec contract <spec>`.\n\
+3. Generate plan context: `agent-spec plan <spec> --code . --format prompt`.\n\
+4. Implement within the contract's Boundaries.\n\
+5. Verify: `agent-spec lifecycle <spec> --code . --format json` — fix until all\n\
    scenarios pass (failed/skipped/uncertain all 0). Do not edit the spec to pass.\n\
-5. Repo-level gate before committing: `agent-spec guard --spec-dir specs --code .`.\n\
-6. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.\n\
+6. Repo-level gate before committing: `agent-spec guard --spec-dir specs --code .`.\n\
+7. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.\n\
 \n\
 The machine verifies whether the code satisfies the contract; you implement\n\
 against it, and a human reviews the contract."
@@ -107,6 +109,7 @@ mod tests {
     fn test_integration_body_is_tool_first() {
         let b = integration_body();
         assert!(b.contains("contract"));
+        assert!(b.contains("init --kind"));
         assert!(b.contains("lifecycle"));
         assert!(b.contains("guard"));
     }

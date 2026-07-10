@@ -124,10 +124,10 @@ Do not hand the contract to an agent until these observable behaviors are either
 - covered by scenarios, or
 - explicitly declared out of scope
 
-For these tasks, prefer starting from the parity-aware scaffold instead of the generic task template:
+For these tasks, create an architecture goal and use the parity example as the authoring reference:
 
 ```bash
-agent-spec init --level task --template rewrite-parity --lang en --name "CLI Parity Contract"
+agent-spec init --kind architecture --name "CLI Parity Contract"
 ```
 
 ## Before Writing a Contract
@@ -267,7 +267,7 @@ If these dimensions matter to the task, they should appear in scenarios, not onl
 
 ## SDD Conventions (goal folders)
 
-For substantial work, keep artifacts in one kebab-case folder per goal: `docs/features/<goal>/`, `docs/issues/<goal>/`, or `docs/architecture/<goal>/`. Place the contract next to the goal or in `specs/`; `guard --spec-dir` is repeatable and gates both. Use `## Current State`, `## UX Shape`, and `## Open Questions` in contracts; a bracketed NEEDS-CLARIFICATION marker is an error-level lint that blocks the gate — resolve every ambiguity before implementation. Skip SDD for trivial work; when a contract is fulfilled and stamped, promote durable rules (`agent-spec promote`) or archive the spec so `specs/` holds only active contracts.
+The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable and can gate goal folders alongside `specs/`.
 
 ## Spec File Structure
 

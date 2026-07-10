@@ -246,6 +246,18 @@ Extracts: `["100.00", "TXN-001"]`
 
 Both ASCII quotes `"..."` and Chinese quotes `\u{201C}...\u{201D}` are supported.
 
+## SDD Goal Package
+
+For substantial work, `agent-spec-sdd` invokes:
+
+```bash
+agent-spec init --kind feature --name "Plugins Hub"
+```
+
+The generated `spec.md` is authoritative; `plan.md` describes implementation
+and `tasks.md` tracks execution. Keep PlantUML inside Markdown fences and bind
+observable BDD behavior to public E2E tests whenever practical.
+
 ## Three-Layer Inheritance Example
 
 ### org.spec.md

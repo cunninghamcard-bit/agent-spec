@@ -79,6 +79,7 @@ pub fn parse_spec_from_str_with_stem(input: &str, task_stem: &str) -> SpecResult
         sections,
         lint_acks,
         source_path: PathBuf::new(),
+        source: input.to_string(),
     })
 }
 

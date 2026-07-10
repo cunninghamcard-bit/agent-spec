@@ -66,6 +66,10 @@ pub struct SpecDocument {
     pub lint_acks: Vec<LintAck>,
     #[serde(skip)]
     pub source_path: PathBuf,
+    /// Original text, retained so source-oriented linters can inspect comments
+    /// and front-matter that do not belong to the structural AST.
+    #[serde(skip)]
+    pub source: String,
 }
 
 /// A top-level section in the spec body.
