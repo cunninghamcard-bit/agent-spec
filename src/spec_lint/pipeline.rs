@@ -313,20 +313,20 @@ mod ack_tests {
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 一
-  测试: t1
-  当 a
-  那么 b
-场景: 二
-  测试: t2
-  当 a
-  那么 b
-场景: 三
-  测试: t3
-  当 a
-  那么 b
+Scenario: 一
+  Test: t1
+  When a
+  Then b
+Scenario: 二
+  Test: t2
+  When a
+  Then b
+Scenario: 三
+  Test: t3
+  When a
+  Then b
 
 ## Questions
 

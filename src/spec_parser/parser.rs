@@ -6,7 +6,8 @@ use crate::spec_core::{
 use std::path::{Path, PathBuf};
 
 use super::keywords::{
-    SectionKind, TestSelectorField, extract_params, match_depends_field, match_mode_field,
+    SectionKind, TestSelectorField, detect_cjk_section_header, detect_cjk_step_keyword,
+    detect_cjk_structural, extract_params, match_depends_field, match_mode_field,
     match_review_field, match_rule_header, match_scenario_header, match_scenario_tags,
     match_section_header, match_step_keyword, match_test_selector, match_test_selector_field,
 };
@@ -129,6 +130,9 @@ fn parse_body(lines: &[&str], offset: usize, rule_scope: &RuleScope) -> SpecResu
             }
             current_section = Some((kind, abs_line));
         } else if matches!(markdown_heading_level(line), Some(1 | 2)) {
+            if let Some((cjk, en)) = detect_cjk_section_header(line) {
+                return Err(cjk_keyword_error(cjk, en, abs_line));
+            }
             let header = line.trim().trim_start_matches('#').trim();
             return Err(SpecError::Parse {
                 message: format!(
@@ -180,7 +184,7 @@ fn build_section(
             Ok(Section::Intent { content, span })
         }
         SectionKind::Constraints => {
-            let items = parse_constraints(lines);
+            let items = parse_constraints(lines)?;
             Ok(Section::Constraints { items, span })
         }
         SectionKind::Decisions => {
@@ -188,7 +192,7 @@ fn build_section(
             Ok(Section::Decisions { items, span })
         }
         SectionKind::Boundaries => {
-            let items = parse_boundaries(lines);
+            let items = parse_boundaries(lines)?;
             Ok(Section::Boundaries { items, span })
         }
         SectionKind::AcceptanceCriteria => {
@@ -223,7 +227,7 @@ fn build_section(
     }
 }
 
-fn parse_constraints(lines: &[(usize, &str)]) -> Vec<Constraint> {
+fn parse_constraints(lines: &[(usize, &str)]) -> SpecResult<Vec<Constraint>> {
     let mut constraints = Vec::new();
     let mut category = ConstraintCategory::General;
 
@@ -233,11 +237,20 @@ fn parse_constraints(lines: &[(usize, &str)]) -> Vec<Constraint> {
         // Sub-section headers for constraint categories
         if trimmed.starts_with("###") || trimmed.starts_with("### ") {
             let header = trimmed.trim_start_matches('#').trim().to_lowercase();
-            if header.contains("必须做") || header.contains("must") && !header.contains("not") {
+            if header.contains("必须做") {
+                return Err(cjk_keyword_error("必须做", "Must", line_num));
+            }
+            if header.contains("禁止") {
+                return Err(cjk_keyword_error("禁止", "Must Not", line_num));
+            }
+            if header.contains("已定") {
+                return Err(cjk_keyword_error("已定", "Decided", line_num));
+            }
+            if header.contains("must") && !header.contains("not") {
                 category = ConstraintCategory::Must;
-            } else if header.contains("禁止") || header.contains("must not") {
+            } else if header.contains("must not") {
                 category = ConstraintCategory::MustNot;
-            } else if header.contains("已定") || header.contains("decided") {
+            } else if header.contains("decided") {
                 category = ConstraintCategory::Decided;
             }
             continue;
@@ -256,7 +269,7 @@ fn parse_constraints(lines: &[(usize, &str)]) -> Vec<Constraint> {
         }
     }
 
-    constraints
+    Ok(constraints)
 }
 
 fn parse_string_list(lines: &[(usize, &str)]) -> Vec<String> {
@@ -268,7 +281,7 @@ fn parse_string_list(lines: &[(usize, &str)]) -> Vec<String> {
         .collect()
 }
 
-fn parse_boundaries(lines: &[(usize, &str)]) -> Vec<Boundary> {
+fn parse_boundaries(lines: &[(usize, &str)]) -> SpecResult<Vec<Boundary>> {
     let mut items = Vec::new();
     let mut category = BoundaryCategory::General;
 
@@ -277,11 +290,15 @@ fn parse_boundaries(lines: &[(usize, &str)]) -> Vec<Boundary> {
 
         if trimmed.starts_with("###") || trimmed.starts_with("### ") {
             let header = trimmed.trim_start_matches('#').trim().to_lowercase();
-            if header.contains("允许修改") || header.contains("allowed") || header.contains("allow")
-            {
+            if header.contains("允许修改") {
+                return Err(cjk_keyword_error("允许修改", "Allowed Changes", line_num));
+            }
+            if header.contains("禁止") {
+                return Err(cjk_keyword_error("禁止做", "Forbidden", line_num));
+            }
+            if header.contains("allowed") || header.contains("allow") {
                 category = BoundaryCategory::Allow;
-            } else if header.contains("禁止")
-                || header.contains("forbidden")
+            } else if header.contains("forbidden")
                 || header.contains("must not")
                 || header.contains("disallow")
             {
@@ -302,7 +319,17 @@ fn parse_boundaries(lines: &[(usize, &str)]) -> Vec<Boundary> {
         }
     }
 
-    items
+    Ok(items)
+}
+
+/// Uniform error for a rejected CJK structural keyword.
+fn cjk_keyword_error(found: &str, replacement: &str, line: usize) -> SpecError {
+    SpecError::Parse {
+        message: format!(
+            "keywords must be English; '{found}' is not recognized — use '{replacement}'"
+        ),
+        span: Span::line(line),
+    }
 }
 
 type ParsedScenarios = (Vec<Scenario>, Vec<BehaviorRule>, Vec<MalformedRule>);
@@ -478,10 +505,20 @@ fn parse_scenarios(lines: &[(usize, &str)], rule_scope: &RuleScope) -> SpecResul
             reading_test_selector_block = false;
         }
 
+        // Keywords must be English: reject legacy CJK structural lines with
+        // an actionable message instead of silently treating them as prose.
+        if let Some((cjk, en)) = detect_cjk_structural(line) {
+            return Err(cjk_keyword_error(cjk, en, line_num));
+        }
+
         // Only collect steps while inside a scenario, so steps under an
         // unrecognized header do not bleed into the next scenario.
         if current_name.is_none() {
             continue;
+        }
+
+        if let Some((cjk, en)) = detect_cjk_step_keyword(line) {
+            return Err(cjk_keyword_error(cjk, en, line_num));
         }
 
         if let Some((kind, text)) = match_step_keyword(line) {
@@ -584,7 +621,7 @@ fn finalize_test_selector(
 
     let Some(filter) = draft.filter else {
         return Err(SpecError::Parse {
-            message: "test selector is missing required `Filter:` / `过滤:` field".into(),
+            message: "test selector is missing required `Filter:` field".into(),
             span: Span::line(line_num),
         });
     };
@@ -630,32 +667,32 @@ inherits: project
 tags: [payment, refund]
 ---
 
-## 意图
+## Intent
 
 为支付网关添加退款功能，支持全额和部分退款。
 
-## 约束
+## Constraints
 
 - 退款金额不得超过原始交易金额
 - 退款操作需要管理员权限
 - 退款必须在原交易后 90 天内发起
 
-## 验收标准
+## Acceptance Criteria
 
-场景: 全额退款
-  假设 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
-  并且 当前用户具有管理员权限
-  当 用户对 "TXN-001" 发起全额退款
-  那么 退款状态变为 "processing"
-  并且 原始交易状态变为 "refunding"
+Scenario: 全额退款
+  Given 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
+  And 当前用户具有管理员权限
+  When 用户对 "TXN-001" 发起全额退款
+  Then 退款状态变为 "processing"
+  And 原始交易状态变为 "refunding"
 
-场景: 退款拒绝 - 超期
-  假设 存在一笔 91 天前完成的交易 "TXN-003"
-  当 用户对 "TXN-003" 发起退款
-  那么 系统拒绝退款
-  并且 返回错误信息包含 "超过退款期限"
+Scenario: 退款拒绝 - 超期
+  Given 存在一笔 91 天前完成的交易 "TXN-003"
+  When 用户对 "TXN-003" 发起退款
+  Then 系统拒绝退款
+  And 返回错误信息包含 "超过退款期限"
 
-## 排除范围
+## Out of Scope
 
 - 登录功能
 - 密码重置
@@ -762,31 +799,24 @@ Scenario: Successful registration
     }
 
     #[test]
-    fn test_parse_mixed_lang_spec() {
+    fn test_parse_mixed_lang_keywords_rejected() {
+        // Mixing CJK step keywords into an otherwise-English scenario used to
+        // be accepted; keywords are now English-only.
         let input = r#"spec: task
 name: "混合语言测试"
 ---
 
-## 验收标准
+## Acceptance Criteria
 
 Scenario: 混合场景
   Given 用户已登录
   当 用户点击 "submit" 按钮
   Then 页面应显示成功消息
-  并且 数据库中有新记录
 "#;
-        let doc = parse_spec_from_str(input).unwrap();
-        match &doc.sections[0] {
-            Section::AcceptanceCriteria { scenarios, .. } => {
-                let s = &scenarios[0];
-                assert_eq!(s.steps.len(), 4);
-                assert_eq!(s.steps[0].kind, StepKind::Given);
-                assert_eq!(s.steps[1].kind, StepKind::When);
-                assert_eq!(s.steps[2].kind, StepKind::Then);
-                assert_eq!(s.steps[3].kind, StepKind::And);
-            }
-            other => panic!("expected AcceptanceCriteria, got {other:?}"),
-        }
+        let err = parse_spec_from_str(input).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("When"), "{msg}");
     }
 
     #[test]
@@ -795,14 +825,14 @@ Scenario: 混合场景
 name: "表格测试"
 ---
 
-## 验收标准
+## Acceptance Criteria
 
-场景: 注册请求
-  当 发送 POST /api/v1/auth/register 请求:
+Scenario: 注册请求
+  When 发送 POST /api/v1/auth/register 请求:
     | field    | value             |
     | email    | alice@example.com |
     | password | Str0ng!Pass#2024  |
-  那么 响应状态码应为 201
+  Then 响应状态码应为 201
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -829,12 +859,12 @@ name: "表格测试"
 name: "普通场景"
 ---
 
-## 验收标准
+## Acceptance Criteria
 
-场景: 无表格
-  假设 用户已登录
-  当 用户点击提交
-  那么 页面显示成功
+Scenario: 无表格
+  Given 用户已登录
+  When 用户点击提交
+  Then 页面显示成功
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -912,13 +942,13 @@ Scenario: Parse succeeds
 name: "绑定测试"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 显式绑定
-  测试: test_parse_scenario_with_explicit_test_selector
-  假设 某个场景声明测试选择器
-  当 parser 解析该场景
-  那么 AST 中保留该 selector
+Scenario: 显式绑定
+  Test: test_parse_scenario_with_explicit_test_selector
+  Given 某个场景声明测试选择器
+  When parser 解析该场景
+  Then AST 中保留该 selector
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -949,15 +979,15 @@ name: "绑定测试"
 name: "结构化绑定"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 结构化绑定
-  测试:
-    包: spec-parser
-    过滤: test_parse_structured_test_selector_block
-  假设 某个场景声明结构化测试选择器
-  当 parser 解析该场景
-  那么 AST 中保留结构化字段
+Scenario: 结构化绑定
+  Test:
+    Package: spec-parser
+    Filter: test_parse_structured_test_selector_block
+  Given 某个场景声明结构化测试选择器
+  When parser 解析该场景
+  Then AST 中保留结构化字段
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -984,18 +1014,18 @@ name: "结构化绑定"
 name: "验证元数据"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 结构化验证强度
-  测试:
-    包: agent-spec
-    过滤: test_parse_scenario_verification_metadata_fields
-    层级: integration
-    替身: local_http_stub
-    命中: commands/update
-  假设 某个场景声明验证元数据
-  当 parser 解析该场景
-  那么 AST 中保留这些字段
+Scenario: 结构化验证强度
+  Test:
+    Package: agent-spec
+    Filter: test_parse_scenario_verification_metadata_fields
+    Level: integration
+    Test Double: local_http_stub
+    Targets: commands/update
+  Given 某个场景声明验证元数据
+  When parser 解析该场景
+  Then AST 中保留这些字段
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1092,13 +1122,13 @@ Scenario: legacy selector
 name: "单行绑定"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 单行绑定
-  测试: test_parse_shorthand_test_selector_as_filter_only
-  假设 某个场景继续使用单行测试绑定
-  当 parser 解析该场景
-  那么 filter 字段被保留
+Scenario: 单行绑定
+  Test: test_parse_shorthand_test_selector_as_filter_only
+  Given 某个场景继续使用单行测试绑定
+  When parser 解析该场景
+  Then filter 字段被保留
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1192,14 +1222,14 @@ name: "Markdown Scenario"
 name: "模式测试"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 优化场景
-  模式: optimize
-  测试: test_parse_mode_field_in_scenario
-  假设 某个场景声明 optimize 模式
-  当 parser 解析该场景
-  那么 AST 中 mode 字段为 Optimize
+Scenario: 优化场景
+  Mode: optimize
+  Test: test_parse_mode_field_in_scenario
+  Given 某个场景声明 optimize 模式
+  When parser 解析该场景
+  Then AST 中 mode 字段为 Optimize
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         match &doc.sections[0] {
@@ -1269,18 +1299,18 @@ Scenario: no mode declared
 name: "依赖测试"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 用户注册
-  假设 注册表单已打开
-  当 用户提交注册
-  那么 注册成功
+Scenario: 用户注册
+  Given 注册表单已打开
+  When 用户提交注册
+  Then 注册成功
 
-场景: 用户登录
-  前置: 用户注册
-  假设 已有注册用户
-  当 用户登录
-  那么 登录成功
+Scenario: 用户登录
+  Depends: 用户注册
+  Given 已有注册用户
+  When 用户登录
+  Then 登录成功
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         match &doc.sections[0] {
@@ -1356,14 +1386,14 @@ Scenario: C
 name: "鉴权"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: auth-must-not-leak — 鉴权失败不得泄漏内部错误
-场景: 失败返回稳定错误
-  测试: test_auth_stable_error
-  假设 鉴权失败
-  当 返回响应
-  那么 不包含内部堆栈
+Scenario: 失败返回稳定错误
+  Test: test_auth_stable_error
+  Given 鉴权失败
+  When 返回响应
+  Then 不包含内部堆栈
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-auth").unwrap();
         let rules = rules_of(&doc);
@@ -1386,14 +1416,14 @@ name: "鉴权"
 name: "退款"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: refund-must-be-idempotent
-场景: 重复退款只生效一次
-  测试: test_refund_idempotent
-  假设 已退款
-  当 再次退款
-  那么 不重复扣减
+Scenario: 重复退款只生效一次
+  Test: test_refund_idempotent
+  Given 已退款
+  When 再次退款
+  Then 不重复扣减
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-refund").unwrap();
         let rules = rules_of(&doc);
@@ -1403,29 +1433,26 @@ name: "退款"
     }
 
     #[test]
-    fn test_parse_chinese_rule_alias() {
+    fn test_chinese_rule_alias_rejected() {
+        // `规则:` used to be an accepted alias of `Rule:`; keywords are now
+        // English-only and the parser must point at the replacement.
         let input = r#"spec: task
 name: "促销"
 ---
 
-## 完成条件
+## Completion Criteria
 
 规则: vip-discount-priority — VIP 折扣优先级高于促销
-示例: VIP 用户折扣优先
-  测试: test_vip_priority
-  假设 用户是 VIP
-  当 同时存在促销
-  那么 应用 VIP 折扣
+Example: VIP 用户折扣优先
+  Test: test_vip_priority
+  Given 用户是 VIP
+  When 同时存在促销
+  Then 应用 VIP 折扣
 "#;
-        let doc = parse_spec_from_str_with_stem(input, "task-promo").unwrap();
-        let rules = rules_of(&doc);
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].key.id, "vip-discount-priority");
-        assert_eq!(rules[0].name, "VIP 折扣优先级高于促销");
-        let scenarios = scenarios_of(&doc);
-        assert_eq!(scenarios.len(), 1);
-        assert_eq!(scenarios[0].name, "VIP 用户折扣优先");
-        assert_eq!(scenarios[0].rule.as_deref(), Some("vip-discount-priority"));
+        let err = parse_spec_from_str_with_stem(input, "task-promo").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Rule:"), "{msg}");
     }
 
     #[test]
@@ -1434,19 +1461,19 @@ name: "促销"
 name: "提现"
 ---
 
-## 完成条件
+## Completion Criteria
 
 Example: 余额充足时提现成功
-  测试: test_withdraw_ok
-  假设 余额 "200"
-  当 提现 "100"
-  那么 成功
+  Test: test_withdraw_ok
+  Given 余额 "200"
+  When 提现 "100"
+  Then 成功
 
-示例: 余额不足时提现失败
-  测试: test_withdraw_insufficient
-  假设 余额 "50"
-  当 提现 "100"
-  那么 拒绝
+Example: 余额不足时提现失败
+  Test: test_withdraw_insufficient
+  Given 余额 "50"
+  When 提现 "100"
+  Then 拒绝
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-withdraw").unwrap();
         let scenarios = scenarios_of(&doc);
@@ -1475,14 +1502,14 @@ Example: 余额充足时提现成功
 name: "鉴权"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: auth-must-not-leak — 鉴权失败不得泄漏内部错误
-场景: 失败返回稳定错误
-  测试: test_auth_stable_error
-  假设 鉴权失败
-  当 返回响应
-  那么 不包含内部堆栈
+Scenario: 失败返回稳定错误
+  Test: test_auth_stable_error
+  Given 鉴权失败
+  When 返回响应
+  Then 不包含内部堆栈
 "#;
         let doc = parse_spec_from_str_with_stem(input, "task-auth").unwrap();
         let json = serde_json::to_string(&doc).unwrap();
@@ -1501,14 +1528,14 @@ name: "鉴权"
 name: "鉴权"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: auth-ok
-场景: 通过
-  测试: test_ok
-  假设 a
-  当 b
-  那么 c
+Scenario: 通过
+  Test: test_ok
+  Given a
+  When b
+  Then c
 "#,
             "task-auth",
         )
@@ -1547,7 +1574,7 @@ name: "鉴权"
     fn test_rule_double_space_separator_with_em_dash_in_display() {
         // Bug 1/2: leftmost separator wins. Double-space is the intended
         // id/name separator even when the display name contains an em dash.
-        let input = "spec: task\nname: \"x\"\n---\n\n## 完成条件\n\n### Rule: rate-limit  Throttling — protect upstream\n场景: 超阈值\n  测试: t\n  当 a\n  那么 b\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\n### Rule: rate-limit  Throttling — protect upstream\nScenario: 超阈值\n  Test: t\n  When a\n  Then b\n";
         let doc = parse_spec_from_str_with_stem(input, "task-x").unwrap();
         let rules = rules_of(&doc);
         assert_eq!(rules.len(), 1, "double-space separator must yield one rule");
@@ -1560,7 +1587,7 @@ name: "鉴权"
     fn test_rule_em_dash_separator_with_double_space_in_display() {
         // Mirror: em-dash is leftmost -> it is the separator; trailing double
         // spaces inside the display name are preserved (trimmed at ends only).
-        let input = "spec: task\nname: \"x\"\n---\n\n## 完成条件\n\n### Rule: auth-leak — fails  must not leak\n场景: s\n  测试: t\n  当 a\n  那么 b\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\n### Rule: auth-leak — fails  must not leak\nScenario: s\n  Test: t\n  When a\n  Then b\n";
         let doc = parse_spec_from_str_with_stem(input, "task-x").unwrap();
         let rules = rules_of(&doc);
         assert_eq!(rules.len(), 1);
@@ -1572,7 +1599,7 @@ name: "鉴权"
     fn test_stray_step_after_rule_header_does_not_leak_into_prior_scenario() {
         // Bug 3: a step-like line between a Rule header and the next scenario
         // must not attach to the previous scenario across the rule boundary.
-        let input = "spec: task\nname: \"x\"\n---\n\n## 完成条件\n\n### Rule: rule-one — first\n场景: A\n  当 b\n  那么 c\n\n### Rule: rule-two — second\n  那么 stray\n场景: B\n  当 e\n  那么 f\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\n### Rule: rule-one — first\nScenario: A\n  When b\n  Then c\n\n### Rule: rule-two — second\n  Then stray\nScenario: B\n  When e\n  Then f\n";
         let doc = parse_spec_from_str_with_stem(input, "task-x").unwrap();
         let scenarios = scenarios_of(&doc);
         let a = scenarios.iter().find(|s| s.name == "A").unwrap();
@@ -1590,7 +1617,7 @@ name: "鉴权"
     fn test_fullwidth_colon_english_scenario_header_is_recognized() {
         // Bug 4: `Scenario：` (English word + full-width colon) must parse as a
         // header, so steps do not bleed into the next scenario.
-        let input = "spec: task\nname: \"x\"\n---\n\n## 完成条件\n\nScenario：A\n  假设 a1\n  当 a2\n  那么 a3\n\nScenario: B\n  假设 b1\n  当 b2\n  那么 b3\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\nScenario：A\n  Given a1\n  When a2\n  Then a3\n\nScenario: B\n  Given b1\n  When b2\n  Then b3\n";
         let doc = parse_spec_from_str(input).unwrap();
         let scenarios = scenarios_of(&doc);
         assert_eq!(scenarios.len(), 2, "both scenarios must be recognized");
@@ -1606,7 +1633,7 @@ name: "鉴权"
     #[test]
     fn test_fullwidth_colon_english_rule_header_is_recognized() {
         // Bug 5: `Rule：` (English word + full-width colon) must create a rule.
-        let input = "spec: task\nname: \"x\"\n---\n\n## 完成条件\n\nRule：auth-must-not-leak\nScenario: stable error\n  当 a\n  那么 b\n";
+        let input = "spec: task\nname: \"x\"\n---\n\n## Completion Criteria\n\nRule：auth-must-not-leak\nScenario: stable error\n  When a\n  Then b\n";
         let doc = parse_spec_from_str_with_stem(input, "task-x").unwrap();
         let rules = rules_of(&doc);
         assert_eq!(rules.len(), 1);
@@ -1624,12 +1651,12 @@ name: "鉴权"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 绑定
-  测试: test_x
-  当 a
-  那么 b
+Scenario: 绑定
+  Test: test_x
+  When a
+  Then b
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let sc = &scenarios_of(&doc)[0];
@@ -1646,11 +1673,11 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 无绑定
-  当 a
-  那么 b
+Scenario: 无绑定
+  When a
+  Then b
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let sc = &scenarios_of(&doc)[0];
@@ -1677,17 +1704,17 @@ name: "x"
 name: "x"
 ---
 
-## 意图
+## Intent
 
 做点事。
 <!-- lint-ack: bdd-rule-id — 故意留作示例 -->
 
-## 完成条件
+## Completion Criteria
 
-场景: s
-  测试: t
-  当 a
-  那么 b
+Scenario: s
+  Test: t
+  When a
+  Then b
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         assert_eq!(doc.lint_acks.len(), 1);
@@ -1728,7 +1755,7 @@ name: "x"
     }
 
     #[test]
-    fn test_parse_questions_section_chinese() {
+    fn test_chinese_questions_header_rejected() {
         let input = r#"spec: task
 name: "x"
 ---
@@ -1737,9 +1764,10 @@ name: "x"
 
 - VIP 等级怎么定义?
 "#;
-        let doc = parse_spec_from_str(input).unwrap();
-        let q = questions_of(&doc).expect("中文 Questions section present");
-        assert_eq!(q.len(), 1);
+        let err = parse_spec_from_str(input).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Questions"), "{msg}");
     }
 
     #[test]
@@ -1755,12 +1783,12 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 唯一场景
-  测试: t
-  当 a
-  那么 b
+Scenario: 唯一场景
+  Test: t
+  When a
+  Then b
 
 ## Questions
 
@@ -1781,7 +1809,7 @@ name: "x"
 name: "ecosystem-import"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: import-preserves-traceability — 导入保留来源 ID
 "#;
@@ -1809,20 +1837,20 @@ name: "ecosystem-import"
 name: "审核测试"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 需要人类审核
-  审核: human
-  测试: test_parse_review_field_in_scenario
-  假设 某个场景声明审核为 human
-  当 parser 解析该场景
-  那么 AST 中 review 字段为 Human
+Scenario: 需要人类审核
+  Review: human
+  Test: test_parse_review_field_in_scenario
+  Given 某个场景声明审核为 human
+  When parser 解析该场景
+  Then AST 中 review 字段为 Human
 
-场景: 默认自动审核
-  测试: test_default_auto_review
-  假设 某个场景不声明审核字段
-  当 parser 解析该场景
-  那么 AST 中 review 字段为 Auto
+Scenario: 默认自动审核
+  Test: test_default_auto_review
+  Given 某个场景不声明审核字段
+  When parser 解析该场景
+  Then AST 中 review 字段为 Auto
 "#;
 
         let doc = parse_spec_from_str(input).unwrap();
@@ -1832,12 +1860,158 @@ name: "审核测试"
                 assert_eq!(
                     scenarios[0].review,
                     crate::spec_core::ReviewMode::Human,
-                    "scenario with '审核: human' should have ReviewMode::Human"
+                    "scenario with 'Review: human' should have ReviewMode::Human"
                 );
                 assert_eq!(
                     scenarios[1].review,
                     crate::spec_core::ReviewMode::Auto,
                     "scenario without review field should default to ReviewMode::Auto"
+                );
+            }
+            other => panic!("expected AcceptanceCriteria, got {other:?}"),
+        }
+    }
+
+    // ---- English-only keywords: parser-level rejection contract ----
+
+    fn parse_err_msg(input: &str) -> String {
+        parse_spec_from_str(input).unwrap_err().to_string()
+    }
+
+    #[test]
+    fn test_parser_rejects_cjk_section_header_with_suggestion() {
+        let input = r#"spec: task
+name: "x"
+---
+
+## 意图
+
+为支付网关添加退款功能。
+"#;
+        let msg = parse_err_msg(input);
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Intent"), "{msg}");
+    }
+
+    #[test]
+    fn test_parser_rejects_cjk_scenario_keyword() {
+        let input = r#"spec: task
+name: "x"
+---
+
+## Acceptance Criteria
+
+场景: 全额退款
+  Given 输入有效
+  When 调用函数
+  Then 返回 Ok
+"#;
+        let msg = parse_err_msg(input);
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Scenario:"), "{msg}");
+    }
+
+    #[test]
+    fn test_parser_rejects_cjk_step_keyword() {
+        let input = r#"spec: task
+name: "x"
+---
+
+## Acceptance Criteria
+
+Scenario: 全额退款
+  假设 存在一笔已完成交易
+  When 用户发起退款
+  Then 退款成功
+"#;
+        let msg = parse_err_msg(input);
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Given"), "{msg}");
+    }
+
+    #[test]
+    fn test_parser_rejects_cjk_test_selector_keys() {
+        // Single-line CJK selector: `测试:` -> `Test:`
+        let msg = parse_err_msg(
+            r#"spec: task
+name: "x"
+---
+
+## Completion Criteria
+
+Scenario: 绑定
+  测试: foo
+  When a
+  Then b
+"#,
+        );
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Test:"), "{msg}");
+
+        // CJK field inside an English `Test:` block: `包:` -> `Package:`
+        let msg = parse_err_msg(
+            r#"spec: task
+name: "x"
+---
+
+## Completion Criteria
+
+Scenario: 绑定
+  Test:
+    包: x
+    Filter: foo
+  When a
+  Then b
+"#,
+        );
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Package:"), "{msg}");
+
+        // CJK field inside an English `Test:` block: `过滤:` -> `Filter:`
+        let msg = parse_err_msg(
+            r#"spec: task
+name: "x"
+---
+
+## Completion Criteria
+
+Scenario: 绑定
+  Test:
+    过滤: y
+  When a
+  Then b
+"#,
+        );
+        assert!(msg.contains("keywords must be English"), "{msg}");
+        assert!(msg.contains("Filter:"), "{msg}");
+    }
+
+    #[test]
+    fn test_parser_keeps_chinese_free_text() {
+        let input = r#"spec: task
+name: "退款功能"
+---
+
+## Intent
+
+为支付网关添加退款功能。
+
+## Acceptance Criteria
+
+Scenario: 全额退款
+  Given 存在一笔金额为 "100.00" 元的已完成交易
+  When 用户发起全额退款
+  Then 退款状态变为 "processing"
+"#;
+        let doc = parse_spec_from_str(input).unwrap();
+        match &doc.sections[1] {
+            Section::AcceptanceCriteria { scenarios, .. } => {
+                assert_eq!(scenarios.len(), 1);
+                assert_eq!(scenarios[0].name, "全额退款");
+                assert_eq!(scenarios[0].steps.len(), 3);
+                assert_eq!(
+                    scenarios[0].steps[0].text,
+                    "存在一笔金额为 \"100.00\" 元的已完成交易"
                 );
             }
             other => panic!("expected AcceptanceCriteria, got {other:?}"),

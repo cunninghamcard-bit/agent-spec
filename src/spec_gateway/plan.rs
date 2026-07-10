@@ -1152,17 +1152,17 @@ mod tests {
 name: "退款"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: refund-must-be-idempotent — 退款幂等
-场景: 首次退款成功
-  测试: t1
-  当 退款
-  那么 成功
-场景: 重复退款不重复扣减
-  测试: t2
-  当 再次退款
-  那么 不重复
+Scenario: 首次退款成功
+  Test: t1
+  When 退款
+  Then 成功
+Scenario: 重复退款不重复扣减
+  Test: t2
+  When 再次退款
+  Then 不重复
 "#,
         )
         .unwrap();

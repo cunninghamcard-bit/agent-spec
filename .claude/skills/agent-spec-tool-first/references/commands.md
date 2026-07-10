@@ -250,8 +250,8 @@ estimate: 1d
 ### Critical tags (Goal Gate)
 
 ```spec
-场景: 用户注册成功（critical）
-  标签: critical
+Scenario: 用户注册成功（critical）
+  Tags: critical
 ```
 
 - `critical` scenarios failing → `gate_blocked=true` in JSON, exit code 2
@@ -260,30 +260,30 @@ estimate: 1d
 ### Review mode
 
 ```spec
-场景: 安全审核
-  审核: human
+Scenario: 安全审核
+  Review: human
 ```
 
-- `审核: human` / `Review: human` → verdict becomes `pending_review` when test passes
+- `Review: human` → verdict becomes `pending_review` when test passes
 - `--review-mode auto` (default): treats as pass; `--review-mode strict`: treats as non-pass
 
 ### Optimize mode
 
 ```spec
-场景: 性能优化
-  模式: optimize
+Scenario: 性能优化
+  Mode: optimize
 ```
 
-- `模式: optimize` / `Mode: optimize` → scenario listed in `optimization_candidates` when pass
+- `Mode: optimize` → scenario listed in `optimization_candidates` when pass
 - Fail still blocks `passed: false` (optimize is a floor, not a ceiling)
 
 ### Scenario dependencies
 
 ```spec
-场景: 用户登录
-  前置: 用户注册
+Scenario: 用户登录
+  Depends: 用户注册
 ```
 
-- `前置:` / `Depends:` → lifecycle executes in topological order
+- `Depends:` → lifecycle executes in topological order
 - Prerequisite fail → dependent scenario auto-skipped with evidence
 - Circular dependencies detected by lint

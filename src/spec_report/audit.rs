@@ -75,10 +75,10 @@ mod tests {
     #[test]
     fn test_audit_counts_specs_rules_scenarios() {
         let a = doc(
-            "spec: task\nname: \"a\"\n---\n\n## 完成条件\n\n### Rule: r-one — 一\n场景: s1\n  测试: t1\n  当 a\n  那么 b\n场景: s2\n  测试: t2\n  当 a\n  那么 b\n",
+            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\n### Rule: r-one — 一\nScenario: s1\n  Test: t1\n  When a\n  Then b\nScenario: s2\n  Test: t2\n  When a\n  Then b\n",
         );
         let b = doc(
-            "spec: task\nname: \"b\"\n---\n\n## 完成条件\n\n### Rule: r-two — 二\n场景: s3\n  测试: t3\n  当 a\n  那么 b\n",
+            "spec: task\nname: \"b\"\n---\n\n## Completion Criteria\n\n### Rule: r-two — 二\nScenario: s3\n  Test: t3\n  When a\n  Then b\n",
         );
         let rep = audit_specs(&[a, b]);
         assert_eq!(rep.spec_count, 2);
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_audit_counts_unproven_rules() {
         let a = doc(
-            "spec: capability\nname: \"cap\"\n---\n\n## 完成条件\n\n### Rule: empty-one\n### Rule: proven\n场景: s\n  测试: t\n  当 a\n  那么 b\n",
+            "spec: capability\nname: \"cap\"\n---\n\n## Completion Criteria\n\n### Rule: empty-one\n### Rule: proven\nScenario: s\n  Test: t\n  When a\n  Then b\n",
         );
         // In a capability spec, both rules take Capability scope; empty-one has no scenarios.
         assert_eq!(audit_specs(&[a]).unproven_rules, 1);
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn test_audit_counts_ungrouped_scenarios() {
         let a = doc(
-            "spec: task\nname: \"a\"\n---\n\n## 完成条件\n\n场景: s1\n  测试: t1\n  当 a\n  那么 b\n场景: s2\n  测试: t2\n  当 a\n  那么 b\n",
+            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\nScenario: s1\n  Test: t1\n  When a\n  Then b\nScenario: s2\n  Test: t2\n  When a\n  Then b\n",
         );
         assert_eq!(audit_specs(&[a]).ungrouped_scenarios, 2);
     }
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_audit_counts_malformed_rules() {
         let a = doc(
-            "spec: task\nname: \"a\"\n---\n\n## 完成条件\n\n规则: NOT kebab\n场景: s\n  测试: t\n  当 a\n  那么 b\n",
+            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\nRule: NOT kebab\nScenario: s\n  Test: t\n  When a\n  Then b\n",
         );
         assert_eq!(audit_specs(&[a]).malformed_rules, 1);
     }
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_audit_json_serializes() {
         let a = doc(
-            "spec: task\nname: \"a\"\n---\n\n## 完成条件\n\n场景: s\n  测试: t\n  当 a\n  那么 b\n",
+            "spec: task\nname: \"a\"\n---\n\n## Completion Criteria\n\nScenario: s\n  Test: t\n  When a\n  Then b\n",
         );
         let json = serde_json::to_string(&audit_specs(&[a])).unwrap();
         assert!(json.contains("spec_count"));

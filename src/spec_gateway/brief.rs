@@ -552,23 +552,23 @@ mod tests {
 name: "分组渲染"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: refund-must-be-idempotent — 退款幂等
-场景: 首次退款成功
-  测试: t1
-  当 退款
-  那么 成功
-场景: 重复退款不重复扣减
-  测试: t2
-  当 再次退款
-  那么 不重复
+Scenario: 首次退款成功
+  Test: t1
+  When 退款
+  Then 成功
+Scenario: 重复退款不重复扣减
+  Test: t2
+  When 再次退款
+  Then 不重复
 
 ### Rule: refund-amount-cap — 退款不超原额
-场景: 超额退款被拒
-  测试: t3
-  当 超额退款
-  那么 拒绝
+Scenario: 超额退款被拒
+  Test: t3
+  When 超额退款
+  Then 拒绝
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let contract = TaskContract::from_doc(&doc);
@@ -592,16 +592,16 @@ name: "分组渲染"
 name: "扁平"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 一
-  测试: t1
-  当 a
-  那么 b
-场景: 二
-  测试: t2
-  当 a
-  那么 b
+Scenario: 一
+  Test: t1
+  When a
+  Then b
+Scenario: 二
+  Test: t2
+  When a
+  Then b
 "#;
         let doc = parse_spec_from_str(input).unwrap();
         let contract = TaskContract::from_doc(&doc);

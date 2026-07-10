@@ -47,20 +47,21 @@ Writing a Contract is the **highest-value human activity** in the agent-spec wor
 
 ## Quick Reference
 
-| Section | Chinese Header | English Header | Purpose |
-|---------|---------------|----------------|---------|
-| Intent | `## 意图` | `## Intent` | What to do and why |
-| Constraints | `## 约束` | `## Constraints` | Must / Must NOT rules |
-| Decisions | `## 已定决策` / `## 决策` | `## Decisions` | Fixed technical choices |
-| Boundaries | `## 边界` | `## Boundaries` | Allowed / Forbidden / Out-of-scope |
-| Acceptance Criteria | `## 验收标准` / `## 完成条件` | `## Acceptance Criteria` / `## Completion Criteria` | BDD scenarios |
-| Out of Scope | `## 排除范围` | `## Out of Scope` | Explicitly excluded items |
-| Questions (Discovery) | `## 问题` / `## 待澄清` | `## Questions` | Unresolved items to clarify (Phase 4; non-blocking) |
+| Section | Header | Purpose |
+|---------|--------|---------|
+| Intent | `## Intent` | What to do and why |
+| Constraints | `## Constraints` | Must / Must NOT rules |
+| Decisions | `## Decisions` | Fixed technical choices |
+| Boundaries | `## Boundaries` | Allowed / Forbidden / Out-of-scope |
+| Acceptance Criteria | `## Acceptance Criteria` / `## Completion Criteria` | BDD scenarios |
+| Out of Scope | `## Out of Scope` | Explicitly excluded items |
+| Questions (Discovery) | `## Questions` | Unresolved items to clarify (Phase 4; non-blocking) |
 
 ## Hard Syntax Rules
 
-- Use exactly one supported section header per line. Good: `## Intent` or `## 意图`. Bad: `## Intent / 意图`.
-- Write scenarios as bare DSL lines under the acceptance section. Good: `Scenario:` / `场景:`. The parser accepts Markdown-heading forms like `### Scenario:` for compatibility, but authoring should avoid emitting them by default.
+- **Structural keywords are English-only (as of agent-spec 0.4.0).** Section headers, `Scenario:`, step keywords, and selector keys must be English. CJK keywords are rejected with an actionable error naming the replacement (e.g. `keywords must be English; '场景:' is not recognized — use 'Scenario:'`). Free text — scenario titles, step prose, quoted parameters — may be any language.
+- Use exactly one supported section header per line. Good: `## Intent`.
+- Write scenarios as bare DSL lines under the acceptance section. Good: `Scenario:`. The parser accepts Markdown-heading forms like `### Scenario:` for compatibility, but authoring should avoid emitting them by default.
 - Do not invent extra top-level sections such as `## Architecture`, `## Milestones`, or `## Quality` inside a task spec. Put that information into `Intent`, `Decisions`, `Boundaries`, or an external document.
 - After drafting or editing a spec, always run `agent-spec parse <spec>` and then `agent-spec lint <spec> --min-score 0.7`.
 
@@ -161,7 +162,7 @@ One focused paragraph. Not a feature list — a clear statement of purpose.
 - Focus on "what to do and why"
 - Mention context (what already exists, where this fits)
 - Keep it to 2-4 sentences
-- Do not combine bilingual section labels on the same header line
+- Prose may be any language; section headers must be the English keywords
 
 ### 2. Decisions — Fixed Technical Choices
 
@@ -222,32 +223,32 @@ BDD scenarios with explicit test bindings.
 ```spec
 ## Completion Criteria
 
-场景: 注册成功                                    ← 1 happy path
-  测试: test_register_returns_201
-  假设 不存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交注册请求:
+Scenario: 注册成功                                ← 1 happy path
+  Test: test_register_returns_201
+  Given 不存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交注册请求:
     | 字段     | 值                |
     | email    | alice@example.com |
     | password | Str0ng!Pass#2026  |
-  那么 响应状态码为 201
-  并且 响应体包含 "user_id"
+  Then 响应状态码为 201
+  And 响应体包含 "user_id"
 
-场景: 重复邮箱被拒绝                              ← exception path 1
-  测试: test_register_rejects_duplicate_email
-  假设 已存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交相同邮箱的注册请求
-  那么 响应状态码为 409
+Scenario: 重复邮箱被拒绝                          ← exception path 1
+  Test: test_register_rejects_duplicate_email
+  Given 已存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交相同邮箱的注册请求
+  Then 响应状态码为 409
 
-场景: 弱密码被拒绝                                ← exception path 2
-  测试: test_register_rejects_weak_password
-  假设 不存在邮箱为 "bob@example.com" 的用户
-  当 客户端提交密码为 "123" 的注册请求
-  那么 响应状态码为 400
+Scenario: 弱密码被拒绝                            ← exception path 2
+  Test: test_register_rejects_weak_password
+  Given 不存在邮箱为 "bob@example.com" 的用户
+  When 客户端提交密码为 "123" 的注册请求
+  Then 响应状态码为 400
 
-场景: 缺少必填字段                                ← exception path 3
-  测试: test_register_rejects_missing_fields
-  当 客户端提交缺少 email 字段的注册请求
-  那么 响应状态码为 400
+Scenario: 缺少必填字段                            ← exception path 3
+  Test: test_register_rejects_missing_fields
+  When 客户端提交缺少 email 字段的注册请求
+  Then 响应状态码为 400
 ```
 
 This forces you to think through edge cases **before coding begins**. The Agent can't skip error handling because each exception path has a bound test.
@@ -273,7 +274,7 @@ a synonym for `Scenario` (Cucumber alignment).
 
 ### Rule → Example grouping
 
-Group related scenarios under a `Rule:` / `规则:` — a promise the system keeps,
+Group related scenarios under a `Rule:` — a promise the system keeps,
 proven by one or more Examples. A Rule has a **stable kebab-case id** (used for
 references and promotion) and a mutable display name:
 
@@ -281,15 +282,15 @@ references and promotion) and a mutable display name:
 ## Completion Criteria
 
 ### Rule: reject-invalid-input — 拒绝非法输入
-场景: 空邮箱被拒绝
-  测试: test_rejects_empty_email
-  当 提交空邮箱
-  那么 返回 400
+Scenario: 空邮箱被拒绝
+  Test: test_rejects_empty_email
+  When 提交空邮箱
+  Then 返回 400
 
-场景: 弱密码被拒绝
-  测试: test_rejects_weak_password
-  当 提交密码 "123"
-  那么 返回 400
+Scenario: 弱密码被拒绝
+  Test: test_rejects_weak_password
+  When 提交密码 "123"
+  Then 返回 400
 ```
 
 - The id is the leading kebab-case token (`reject-invalid-input`); it is separated
@@ -298,16 +299,16 @@ references and promotion) and a mutable display name:
   be swallowed into the id, tripping `bdd-rule-id`). **Never encode identity in the
   display name** — rename freely, the id is the anchor.
 - `bdd-rule-id` lints malformed (non-kebab-case) ids; `bdd-rule-grouping` nudges
-  ungrouped scenarios. A scenario binds to a Rule via `规则:` / by sitting under
+  ungrouped scenarios. A scenario binds to a Rule by sitting under
   the Rule header.
 - A Rule with no proving Example is "unproven" (surfaces in `audit`).
 
 ### Discovery: `## Questions`
 
 Before a contract is fully formed, capture unresolved items in a `## Questions`
-(`## 问题` / `## 待澄清`) section — bullet list. These are **non-blocking**
+section — bullet list. These are **non-blocking**
 (`open-question` lint is Info/Warning, never an Error; they do NOT affect
-`is_passing`). Mark resolved items with `[x]` / `[已解决]` / `RESOLVED`.
+`is_passing`). Mark resolved items with `[x]` / `RESOLVED`.
 
 ```spec
 ## Questions
@@ -421,13 +422,13 @@ Constraints and decisions are **inherited downward**. Task specs inherit from pr
 
 ## BDD Step Keywords
 
-| English | Chinese | Usage |
-|---------|---------|-------|
-| `Given` | `假设` | Precondition |
-| `When` | `当` | Action |
-| `Then` | `那么` | Expected result |
-| `And` | `并且` | Additional step (same type as previous) |
-| `But` | `但是` | Negative additional step |
+| Keyword | Usage |
+|---------|-------|
+| `Given` | Precondition |
+| `When` | Action |
+| `Then` | Expected result |
+| `And` | Additional step (same type as previous) |
+| `But` | Negative additional step |
 
 ## Test Selector Patterns
 
@@ -453,16 +454,13 @@ Scenario: Cross-crate verification
   Then passes
 ```
 
-### Chinese equivalents
+Scenario titles and prose may be any language — only the keywords are English:
 
 ```spec
-场景: 正常路径
-  测试: test_happy_path
-
-场景: 跨包验证
-  测试:
-    包: spec-gateway
-    过滤: test_contract_prompt_format
+Scenario: 跨包验证
+  Test:
+    Package: spec-gateway
+    Filter: test_contract_prompt_format
 ```
 
 ## Step Tables
@@ -547,9 +545,9 @@ Before handing a Contract to an Agent, verify:
 Mark must-pass scenarios with `critical` tag. Critical failures set `gate_blocked=true` and exit code 2.
 
 ```spec
-场景: 用户注册成功（critical）
-  标签: critical
-  测试: test_register_returns_201
+Scenario: 用户注册成功（critical）
+  Tags: critical
+  Test: test_register_returns_201
   ...
 ```
 
@@ -557,12 +555,12 @@ Name suffix `（critical）`/`(critical)` also works as shorthand.
 
 ### Review mode
 
-Scenarios requiring human sign-off use `审核: human` / `Review: human`. Test pass → `pending_review` verdict.
+Scenarios requiring human sign-off use `Review: human`. Test pass → `pending_review` verdict.
 
 ```spec
-场景: 安全审核
-  审核: human
-  测试: test_security_audit
+Scenario: 安全审核
+  Review: human
+  Test: test_security_audit
   ...
 ```
 
@@ -570,23 +568,23 @@ Scenarios requiring human sign-off use `审核: human` / `Review: human`. Test p
 
 ### Optimize mode
 
-Scenarios that represent optimization targets use `模式: optimize` / `Mode: optimize`. Pass → listed in `optimization_candidates`. Fail still blocks.
+Scenarios that represent optimization targets use `Mode: optimize`. Pass → listed in `optimization_candidates`. Fail still blocks.
 
 ```spec
-场景: 性能优化
-  模式: optimize
-  测试: test_performance_baseline
+Scenario: 性能优化
+  Mode: optimize
+  Test: test_performance_baseline
   ...
 ```
 
 ### Scenario dependencies
 
-Use `前置:` / `Depends:` for execution order. Prerequisite fail → dependent auto-skipped.
+Use `Depends:` for execution order. Prerequisite fail → dependent auto-skipped.
 
 ```spec
-场景: 用户登录
-  前置: 用户注册
-  测试: test_login
+Scenario: 用户登录
+  Depends: 用户注册
+  Test: test_login
   ...
 ```
 

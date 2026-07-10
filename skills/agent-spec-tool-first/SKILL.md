@@ -127,7 +127,7 @@ Catches: malformed structure, zero-scenario acceptance sections, vague verbs, un
 **Required self-checks before coding:**
 - `agent-spec parse` must show the expected section count and a non-zero scenario count for task specs.
 - If `Acceptance Criteria: 0 scenarios` appears, stop and rewrite the spec before running `contract` or `lifecycle`.
-- The parser accepts Markdown-heading forms like `### Scenario:` and `### Test:` for compatibility, but authoring should still emit bare `Scenario:` / `场景:` and `Test:` / `测试:` lines by default. Do not invent extra top-level sections like `## Milestones`.
+- The parser accepts Markdown-heading forms like `### Scenario:` and `### Test:` for compatibility, but authoring should still emit bare `Scenario:` and `Test:` lines by default. Structural keywords are English-only (as of 0.4.0); free text may be any language. Do not invent extra top-level sections like `## Milestones`.
 
 **Unbound Observable Behavior review:**
 - After `parse + lint`, ask which stdout, stderr, file, network, cache, and persisted-state behaviors are still unbound.
@@ -349,9 +349,9 @@ This produces a final merged report where Skip verdicts are replaced with the Ag
 
 1. **Self-bootstrap**: Write specs first, lint them, then implement against them. The spec defines correctness before code exists.
 
-2. **Bind every scenario to a test**: Every scenario needs a `Test:` / `测试:` selector. Without it, TestVerifier skips the scenario and reports `skip` — not `pass`.
+2. **Bind every scenario to a test**: Every scenario needs a `Test:` selector. Without it, TestVerifier skips the scenario and reports `skip` — not `pass`.
 
-3. **Tag critical scenarios**: Add `标签: critical` / `Tags: critical` to must-pass scenarios. Critical failures set `gate_blocked=true` and exit code 2, making them CI-friendly gates.
+3. **Tag critical scenarios**: Add `Tags: critical` to must-pass scenarios. Critical failures set `gate_blocked=true` and exit code 2, making them CI-friendly gates.
 
 4. **Use the dependency graph for planning**: Add `depends` and `estimate` to spec frontmatter, then run `agent-spec graph --spec-dir specs` to visualize the DAG and critical path before starting work.
 

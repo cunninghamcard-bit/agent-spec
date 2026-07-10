@@ -36,7 +36,7 @@ A task contract is a structured spec with four core parts:
 - `Boundaries`: what may change, and what must not change
 - `Completion Criteria`: BDD scenarios that define deterministic pass/fail behavior
 
-The DSL supports English and Chinese headings and step keywords.
+As of 0.4.0, structural keywords (section headings, `Scenario:`, `Given`/`When`/`Then`, selector keys) are English-only. CJK keywords are rejected with an actionable error naming the English replacement (e.g. `keywords must be English; '场景:' is not recognized — use 'Scenario:'`). Descriptive free text — scenario titles, step prose, quoted parameters — may be any language.
 
 ## Example
 
@@ -79,19 +79,14 @@ Scenario: Successful registration
   And response body should contain "user_id"
 ```
 
-Chinese authoring is also supported:
+Free text may be any language — only the structural keywords must be English:
 
 ```spec
-## 意图
-## 已定决策
-## 边界
-## 完成条件
-
-场景: 全额退款保持现有返回结构
-  测试: test_refund_service_keeps_existing_success_payload
-  假设 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
-  当 用户对 "TXN-001" 发起全额退款
-  那么 响应状态码为 202
+Scenario: 全额退款保持现有返回结构
+  Test: test_refund_service_keeps_existing_success_payload
+  Given 存在一笔金额为 "100.00" 元的已完成交易 "TXN-001"
+  When 用户对 "TXN-001" 发起全额退款
+  Then 响应状态码为 202
 ```
 
 ## Workflow
@@ -249,7 +244,7 @@ Outputs git trailers (`Spec-Name`, `Spec-Passing`, `Spec-Summary`) for the commi
 
 ## Explicit Test Binding
 
-Task-level scenarios should declare an explicit `Test:` / `测试:` selector.
+Task-level scenarios should declare an explicit `Test:` selector.
 
 ```spec
 Scenario: Duplicate email is rejected
@@ -263,13 +258,6 @@ Scenario: Duplicate email is rejected
   Test:
     Package: user-service
     Filter: test_register_api_rejects_duplicate_email
-```
-
-```spec
-场景: 超限退款返回稳定错误码
-  测试:
-    包: refund-service
-    过滤: test_refund_service_rejects_refund_exceeding_original_amount
 ```
 
 This is the default quality rule for self-hosting and new task specs. The older `// @spec:` source annotation is still accepted as a compatibility fallback, but it should not be the primary authoring path.

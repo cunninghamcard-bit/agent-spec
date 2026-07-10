@@ -1,32 +1,11 @@
 use crate::spec_core::StepKind;
 
-/// Bilingual keyword recognition for BDD steps.
+/// English keyword recognition for BDD steps. Structural keywords are
+/// English-only; CJK aliases are detected separately and rejected with an
+/// actionable error (see `detect_cjk_structural` / `detect_cjk_step_keyword`).
 pub fn match_step_keyword(line: &str) -> Option<(StepKind, &str)> {
     let trimmed = line.trim();
 
-    // Order matters: check longer keywords first to avoid partial matches.
-    let mappings: &[(&str, StepKind)] = &[
-        // Chinese
-        ("假设 ", StepKind::Given),
-        ("假设", StepKind::Given),
-        ("当 ", StepKind::When),
-        ("当", StepKind::When),
-        ("那么 ", StepKind::Then),
-        ("那么", StepKind::Then),
-        ("并且 ", StepKind::And),
-        ("并且", StepKind::And),
-        ("但是 ", StepKind::But),
-        ("但是", StepKind::But),
-        // English (case-insensitive check below)
-    ];
-
-    for &(kw, kind) in mappings {
-        if let Some(rest) = trimmed.strip_prefix(kw) {
-            return Some((kind, rest.trim()));
-        }
-    }
-
-    // English keywords (case-insensitive)
     let en_mappings: &[(&str, StepKind)] = &[
         ("given ", StepKind::Given),
         ("when ", StepKind::When),
@@ -46,55 +25,35 @@ pub fn match_step_keyword(line: &str) -> Option<(StepKind, &str)> {
     None
 }
 
-/// Bilingual section header recognition.
+/// English section header recognition.
 pub fn match_section_header(line: &str) -> Option<SectionKind> {
     let trimmed = line.trim().trim_start_matches('#').trim();
     let lower = trimmed.to_lowercase();
 
-    if lower.starts_with("意图") || lower.starts_with("intent") {
+    if lower.starts_with("intent") {
         Some(SectionKind::Intent)
-    } else if lower.starts_with("约束") || lower.starts_with("constraint") {
+    } else if lower.starts_with("constraint") {
         Some(SectionKind::Constraints)
-    } else if lower.starts_with("已定决策")
-        || lower.starts_with("决策")
-        || lower.starts_with("decision")
-    {
+    } else if lower.starts_with("decision") {
         Some(SectionKind::Decisions)
-    } else if lower.starts_with("边界")
-        || lower.starts_with("boundaries")
-        || lower.starts_with("boundary")
-    {
+    } else if lower.starts_with("boundaries") || lower.starts_with("boundary") {
         Some(SectionKind::Boundaries)
-    } else if lower.starts_with("验收标准")
-        || lower.starts_with("acceptance criter")
-        || lower.starts_with("完成条件")
-        || lower.starts_with("completion criter")
-    {
+    } else if lower.starts_with("acceptance criter") || lower.starts_with("completion criter") {
         Some(SectionKind::AcceptanceCriteria)
-    } else if lower.starts_with("排除范围") || lower.starts_with("out of scope") {
+    } else if lower.starts_with("out of scope") {
         Some(SectionKind::OutOfScope)
-    } else if lower.starts_with("问题")
-        || lower.starts_with("待澄清")
-        || lower.starts_with("questions")
-    {
+    } else if lower.starts_with("questions") {
         Some(SectionKind::Questions)
     } else {
         None
     }
 }
 
-/// Scenario header recognition. `Example:` / `例子:` / `示例:` are accepted as
-/// aliases of `Scenario:` / `场景:` (Cucumber treats Example and Scenario as
-/// synonyms); the parser stores both as `Scenario`.
+/// Scenario header recognition. `Example:` is accepted as an alias of
+/// `Scenario:` (Cucumber treats Example and Scenario as synonyms); the parser
+/// stores both as `Scenario`.
 pub fn match_scenario_header(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
-
-    // Chinese scenario / example aliases
-    for prefix in ["场景:", "场景：", "示例:", "示例：", "例子:", "例子："] {
-        if let Some(rest) = trimmed.strip_prefix(prefix) {
-            return Some(rest.trim());
-        }
-    }
 
     // English keywords, accepting both ASCII `:` and full-width `：`
     // (common when authoring with a CJK IME on).
@@ -111,18 +70,12 @@ pub fn match_scenario_header(line: &str) -> Option<&str> {
     None
 }
 
-/// Behavior rule header recognition: `Rule:` / `规则:`.
+/// Behavior rule header recognition: `Rule:`.
 /// Returns the raw content after the colon (id and optional display name);
 /// the parser is responsible for splitting and validating the kebab-case id.
 pub fn match_rule_header(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
 
-    if let Some(rest) = trimmed
-        .strip_prefix("规则:")
-        .or_else(|| trimmed.strip_prefix("规则："))
-    {
-        return Some(rest.trim());
-    }
     let lower = trimmed.to_lowercase();
     for colon in [":", "："] {
         let prefix = format!("rule{colon}");
@@ -137,31 +90,19 @@ pub fn match_rule_header(line: &str) -> Option<&str> {
 pub fn match_test_selector(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
 
-    if let Some(rest) = trimmed
-        .strip_prefix("测试:")
-        .or_else(|| trimmed.strip_prefix("测试："))
-    {
-        Some(rest.trim())
+    let lower = trimmed.to_lowercase();
+    if lower.starts_with("test:") {
+        Some(trimmed["test:".len()..].trim())
     } else {
-        let lower = trimmed.to_lowercase();
-        if lower.starts_with("test:") {
-            Some(trimmed["test:".len()..].trim())
-        } else {
-            None
-        }
+        None
     }
 }
 
-/// Scenario-level tags line recognition (e.g., `标签: [critical]` or `Tags: [critical]`).
+/// Scenario-level tags line recognition (e.g., `Tags: [critical]`).
 pub fn match_scenario_tags(line: &str) -> Option<Vec<String>> {
     let trimmed = line.trim().trim_start_matches('#').trim();
 
-    let value = if let Some(rest) = trimmed
-        .strip_prefix("标签:")
-        .or_else(|| trimmed.strip_prefix("标签："))
-    {
-        Some(rest.trim())
-    } else {
+    let value = {
         let lower = trimmed.to_lowercase();
         if lower.starts_with("tags:") {
             Some(trimmed["tags:".len()..].trim())
@@ -188,40 +129,9 @@ pub enum TestSelectorField {
     Targets,
 }
 
-/// Structured fields under a `Test:` / `测试:` selector block.
+/// Structured fields under a `Test:` selector block.
 pub fn match_test_selector_field(line: &str) -> Option<(TestSelectorField, &str)> {
     let trimmed = line.trim().trim_start_matches('#').trim();
-
-    if let Some(rest) = trimmed
-        .strip_prefix("包:")
-        .or_else(|| trimmed.strip_prefix("包："))
-    {
-        return Some((TestSelectorField::Package, rest.trim()));
-    }
-    if let Some(rest) = trimmed
-        .strip_prefix("过滤:")
-        .or_else(|| trimmed.strip_prefix("过滤："))
-    {
-        return Some((TestSelectorField::Filter, rest.trim()));
-    }
-    if let Some(rest) = trimmed
-        .strip_prefix("层级:")
-        .or_else(|| trimmed.strip_prefix("层级："))
-    {
-        return Some((TestSelectorField::Level, rest.trim()));
-    }
-    if let Some(rest) = trimmed
-        .strip_prefix("替身:")
-        .or_else(|| trimmed.strip_prefix("替身："))
-    {
-        return Some((TestSelectorField::TestDouble, rest.trim()));
-    }
-    if let Some(rest) = trimmed
-        .strip_prefix("命中:")
-        .or_else(|| trimmed.strip_prefix("命中："))
-    {
-        return Some((TestSelectorField::Targets, rest.trim()));
-    }
 
     let lower = trimmed.to_lowercase();
     if lower.starts_with("package:") {
@@ -252,17 +162,10 @@ pub fn match_test_selector_field(line: &str) -> Option<(TestSelectorField, &str)
     None
 }
 
-/// Review field recognition: `审核: human` / `Review: human`.
+/// Review field recognition: `Review: human`.
 /// Returns Some("human") or Some("auto"), or None if not a review line.
 pub fn match_review_field(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
-
-    if let Some(rest) = trimmed
-        .strip_prefix("审核:")
-        .or_else(|| trimmed.strip_prefix("审核："))
-    {
-        return Some(rest.trim());
-    }
 
     let lower = trimmed.to_lowercase();
     if lower.starts_with("review:") {
@@ -272,17 +175,10 @@ pub fn match_review_field(line: &str) -> Option<&str> {
     None
 }
 
-/// Mode field recognition: `模式: optimize` / `Mode: optimize`.
+/// Mode field recognition: `Mode: optimize`.
 /// Returns Some("optimize") or Some("standard"), or None if not a mode line.
 pub fn match_mode_field(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
-
-    if let Some(rest) = trimmed
-        .strip_prefix("模式:")
-        .or_else(|| trimmed.strip_prefix("模式："))
-    {
-        return Some(rest.trim());
-    }
 
     let lower = trimmed.to_lowercase();
     if lower.starts_with("mode:") {
@@ -292,17 +188,10 @@ pub fn match_mode_field(line: &str) -> Option<&str> {
     None
 }
 
-/// Depends field recognition: `前置: A, B` / `Depends: A, B`.
+/// Depends field recognition: `Depends: A, B`.
 /// Returns Some("A, B") or None if not a depends line.
 pub fn match_depends_field(line: &str) -> Option<&str> {
     let trimmed = line.trim().trim_start_matches('#').trim();
-
-    if let Some(rest) = trimmed
-        .strip_prefix("前置:")
-        .or_else(|| trimmed.strip_prefix("前置："))
-    {
-        return Some(rest.trim());
-    }
 
     let lower = trimmed.to_lowercase();
     if lower.starts_with("depends:") {
@@ -310,6 +199,89 @@ pub fn match_depends_field(line: &str) -> Option<&str> {
     }
 
     None
+}
+
+/// Every CJK structural keyword the DSL previously accepted, mapped to its
+/// English replacement. Keywords must be English; these tables exist only so
+/// the parser can reject a legacy spec with an actionable message instead of
+/// silently mis-parsing it.
+const CJK_SECTION_HEADERS: &[(&str, &str)] = &[
+    ("已定决策", "Decisions"),
+    ("验收标准", "Acceptance Criteria"),
+    ("完成条件", "Completion Criteria"),
+    ("排除范围", "Out of Scope"),
+    ("允许修改", "Allowed Changes"),
+    ("禁止做", "Forbidden"),
+    ("待澄清", "Questions"),
+    ("意图", "Intent"),
+    ("约束", "Constraints"),
+    ("决策", "Decisions"),
+    ("边界", "Boundaries"),
+    ("问题", "Questions"),
+];
+
+const CJK_COLON_KEYWORDS: &[(&str, &str)] = &[
+    ("场景", "Scenario:"),
+    ("示例", "Example:"),
+    ("例子", "Example:"),
+    ("规则", "Rule:"),
+    ("测试", "Test:"),
+    ("过滤", "Filter:"),
+    ("层级", "Level:"),
+    ("替身", "Test Double:"),
+    ("命中", "Targets:"),
+    ("审核", "Review:"),
+    ("模式", "Mode:"),
+    ("标签", "Tags:"),
+    ("前置", "Depends:"),
+    ("包", "Package:"),
+];
+
+const CJK_STEP_KEYWORDS: &[(&str, &str)] = &[
+    ("假设", "Given"),
+    ("那么", "Then"),
+    ("并且", "And"),
+    ("但是", "But"),
+    ("当", "When"),
+];
+
+/// Detect a CJK `keyword:` line (scenario, selector, rule, tags, ...).
+/// Returns `(found, english_replacement)` so the parser can fail with an
+/// actionable message.
+pub fn detect_cjk_structural(line: &str) -> Option<(&'static str, &'static str)> {
+    let trimmed = line.trim().trim_start_matches('#').trim();
+
+    for &(cjk, en) in CJK_COLON_KEYWORDS {
+        for colon in [":", "："] {
+            let mut prefix = String::with_capacity(cjk.len() + colon.len());
+            prefix.push_str(cjk);
+            prefix.push_str(colon);
+            if trimmed.starts_with(&prefix) {
+                return Some((cjk, en));
+            }
+        }
+    }
+
+    None
+}
+
+/// Detect a CJK section header on a markdown heading line.
+pub fn detect_cjk_section_header(line: &str) -> Option<(&'static str, &'static str)> {
+    let trimmed = line.trim().trim_start_matches('#').trim();
+    CJK_SECTION_HEADERS
+        .iter()
+        .find(|(cjk, _)| trimmed.starts_with(cjk))
+        .copied()
+}
+
+/// Detect a CJK step keyword. Only meaningful inside a scenario body, where
+/// these prefixes were previously parsed as structural steps.
+pub fn detect_cjk_step_keyword(line: &str) -> Option<(&'static str, &'static str)> {
+    let trimmed = line.trim();
+    CJK_STEP_KEYWORDS
+        .iter()
+        .find(|(cjk, _)| trimmed.starts_with(cjk))
+        .copied()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -352,10 +324,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_match_step_chinese() {
-        let (kind, rest) = match_step_keyword("  假设 数据库中存在用户").unwrap();
-        assert_eq!(kind, StepKind::Given);
-        assert_eq!(rest, "数据库中存在用户");
+    fn test_match_step_chinese_rejected() {
+        assert!(match_step_keyword("  假设 数据库中存在用户").is_none());
+        assert_eq!(
+            detect_cjk_step_keyword("  假设 数据库中存在用户"),
+            Some(("假设", "Given"))
+        );
+        assert!(match_step_keyword("  并且 用户已登录").is_none());
+        assert_eq!(
+            detect_cjk_step_keyword("  并且 用户已登录"),
+            Some(("并且", "And"))
+        );
+        assert_eq!(detect_cjk_step_keyword("当 用户点击"), Some(("当", "When")));
+        assert_eq!(detect_cjk_step_keyword("那么 成功"), Some(("那么", "Then")));
+        assert_eq!(detect_cjk_step_keyword("但是 失败"), Some(("但是", "But")));
     }
 
     #[test]
@@ -366,16 +348,17 @@ mod tests {
     }
 
     #[test]
-    fn test_match_step_and() {
-        let (kind, rest) = match_step_keyword("  并且 用户已登录").unwrap();
-        assert_eq!(kind, StepKind::And);
-        assert_eq!(rest, "用户已登录");
-    }
-
-    #[test]
-    fn test_scenario_header_chinese() {
-        assert_eq!(match_scenario_header("场景: 全额退款"), Some("全额退款"));
-        assert_eq!(match_scenario_header("场景：全额退款"), Some("全额退款"));
+    fn test_scenario_header_chinese_rejected() {
+        assert!(match_scenario_header("场景: 全额退款").is_none());
+        assert!(match_scenario_header("场景：全额退款").is_none());
+        assert_eq!(
+            detect_cjk_structural("场景: 全额退款"),
+            Some(("场景", "Scenario:"))
+        );
+        assert_eq!(
+            detect_cjk_structural("场景：全额退款"),
+            Some(("场景", "Scenario:"))
+        );
     }
 
     #[test]
@@ -387,16 +370,25 @@ mod tests {
     }
 
     #[test]
-    fn test_scenario_header_accepts_example_aliases() {
+    fn test_scenario_header_example_alias_english_only() {
         assert_eq!(
             match_scenario_header("Example: Full refund"),
             Some("Full refund")
         );
-        assert_eq!(match_scenario_header("示例: 余额不足"), Some("余额不足"));
-        assert_eq!(match_scenario_header("例子: 余额充足"), Some("余额充足"));
         assert_eq!(
             match_scenario_header("### Example: Happy path"),
             Some("Happy path")
+        );
+        // CJK aliases are rejected and reported for replacement.
+        assert!(match_scenario_header("示例: 余额不足").is_none());
+        assert!(match_scenario_header("例子: 余额充足").is_none());
+        assert_eq!(
+            detect_cjk_structural("示例: 余额不足"),
+            Some(("示例", "Example:"))
+        );
+        assert_eq!(
+            detect_cjk_structural("例子: 余额充足"),
+            Some(("例子", "Example:"))
         );
     }
 
@@ -407,12 +399,13 @@ mod tests {
             Some("auth-must-not-leak — 鉴权失败不得泄漏内部错误")
         );
         assert_eq!(
-            match_rule_header("规则: vip-discount-priority"),
-            Some("vip-discount-priority")
-        );
-        assert_eq!(
             match_rule_header("### Rule: refund-idempotent"),
             Some("refund-idempotent")
+        );
+        assert_eq!(match_rule_header("规则: vip-discount-priority"), None);
+        assert_eq!(
+            detect_cjk_structural("规则: vip-discount-priority"),
+            Some(("规则", "Rule:"))
         );
         assert_eq!(match_rule_header("场景: 普通场景"), None);
         assert_eq!(match_rule_header("- 普通条目"), None);
@@ -424,9 +417,10 @@ mod tests {
             match_scenario_header("### Scenario: Full refund"),
             Some("Full refund")
         );
+        assert!(match_scenario_header("### 场景: 全额退款").is_none());
         assert_eq!(
-            match_scenario_header("### 场景: 全额退款"),
-            Some("全额退款")
+            detect_cjk_structural("### 场景: 全额退款"),
+            Some(("场景", "Scenario:"))
         );
     }
 
@@ -443,30 +437,35 @@ mod tests {
     }
 
     #[test]
-    fn test_match_test_selector_chinese() {
+    fn test_match_test_selector_chinese_rejected() {
+        assert!(match_test_selector("  测试: test_parse_contract").is_none());
+        assert!(match_test_selector("  测试：test_parse_contract").is_none());
         assert_eq!(
-            match_test_selector("  测试: test_parse_contract"),
-            Some("test_parse_contract")
+            detect_cjk_structural("  测试: test_parse_contract"),
+            Some(("测试", "Test:"))
         );
         assert_eq!(
-            match_test_selector("  测试：test_parse_contract"),
-            Some("test_parse_contract")
+            detect_cjk_structural("  测试：test_parse_contract"),
+            Some(("测试", "Test:"))
         );
     }
 
     #[test]
     fn test_match_test_selector_fields_support_verification_metadata() {
+        assert!(match_test_selector_field("  层级: integration").is_none());
         assert_eq!(
-            match_test_selector_field("  层级: integration"),
-            Some((TestSelectorField::Level, "integration"))
+            detect_cjk_structural("  层级: integration"),
+            Some(("层级", "Level:"))
         );
+        assert!(match_test_selector_field("  替身: local_http_stub").is_none());
         assert_eq!(
-            match_test_selector_field("  替身: local_http_stub"),
-            Some((TestSelectorField::TestDouble, "local_http_stub"))
+            detect_cjk_structural("  替身: local_http_stub"),
+            Some(("替身", "Test Double:"))
         );
+        assert!(match_test_selector_field("  命中: commands/update").is_none());
         assert_eq!(
-            match_test_selector_field("  命中: commands/update"),
-            Some((TestSelectorField::Targets, "commands/update"))
+            detect_cjk_structural("  命中: commands/update"),
+            Some(("命中", "Targets:"))
         );
         assert_eq!(
             match_test_selector_field("  Level: integration"),
@@ -496,21 +495,24 @@ mod tests {
             match_test_selector("### Test: test_parse_contract"),
             Some("test_parse_contract")
         );
+        assert!(match_test_selector("### 测试: test_parse_contract").is_none());
         assert_eq!(
-            match_test_selector("### 测试: test_parse_contract"),
-            Some("test_parse_contract")
+            detect_cjk_structural("### 测试: test_parse_contract"),
+            Some(("测试", "Test:"))
         );
     }
 
     #[test]
-    fn test_match_test_selector_field_chinese() {
+    fn test_match_test_selector_field_chinese_rejected() {
+        assert!(match_test_selector_field("  包: spec-parser").is_none());
         assert_eq!(
-            match_test_selector_field("  包: spec-parser"),
-            Some((TestSelectorField::Package, "spec-parser"))
+            detect_cjk_structural("  包: spec-parser"),
+            Some(("包", "Package:"))
         );
+        assert!(match_test_selector_field("  过滤: test_parse_contract").is_none());
         assert_eq!(
-            match_test_selector_field("  过滤: test_parse_contract"),
-            Some((TestSelectorField::Filter, "test_parse_contract"))
+            detect_cjk_structural("  过滤: test_parse_contract"),
+            Some(("过滤", "Filter:"))
         );
     }
 
@@ -532,43 +534,27 @@ mod tests {
             match_test_selector_field("### Package: spec-parser"),
             Some((TestSelectorField::Package, "spec-parser"))
         );
+        assert!(match_test_selector_field("### 过滤: test_parse_contract").is_none());
         assert_eq!(
-            match_test_selector_field("### 过滤: test_parse_contract"),
-            Some((TestSelectorField::Filter, "test_parse_contract"))
+            detect_cjk_structural("### 过滤: test_parse_contract"),
+            Some(("过滤", "Filter:"))
         );
     }
 
     #[test]
     fn test_section_headers() {
-        assert_eq!(match_section_header("## 意图"), Some(SectionKind::Intent));
         assert_eq!(match_section_header("## Intent"), Some(SectionKind::Intent));
-        assert_eq!(
-            match_section_header("## 约束"),
-            Some(SectionKind::Constraints)
-        );
         assert_eq!(
             match_section_header("## Constraints"),
             Some(SectionKind::Constraints)
-        );
-        assert_eq!(
-            match_section_header("## 决策"),
-            Some(SectionKind::Decisions)
         );
         assert_eq!(
             match_section_header("## Decisions"),
             Some(SectionKind::Decisions)
         );
         assert_eq!(
-            match_section_header("## 边界"),
-            Some(SectionKind::Boundaries)
-        );
-        assert_eq!(
             match_section_header("## Boundaries"),
             Some(SectionKind::Boundaries)
-        );
-        assert_eq!(
-            match_section_header("## 验收标准"),
-            Some(SectionKind::AcceptanceCriteria)
         );
         assert_eq!(
             match_section_header("## Acceptance Criteria"),
@@ -578,6 +564,22 @@ mod tests {
             match_section_header("## Completion Criteria"),
             Some(SectionKind::AcceptanceCriteria)
         );
+    }
+
+    #[test]
+    fn test_section_headers_chinese_rejected() {
+        for (header, cjk, en) in [
+            ("## 意图", "意图", "Intent"),
+            ("## 约束", "约束", "Constraints"),
+            ("## 决策", "决策", "Decisions"),
+            ("## 边界", "边界", "Boundaries"),
+            ("## 验收标准", "验收标准", "Acceptance Criteria"),
+            ("## 完成条件", "完成条件", "Completion Criteria"),
+            ("## 排除范围", "排除范围", "Out of Scope"),
+        ] {
+            assert!(match_section_header(header).is_none(), "{header}");
+            assert_eq!(detect_cjk_section_header(header), Some((cjk, en)));
+        }
     }
 
     #[test]

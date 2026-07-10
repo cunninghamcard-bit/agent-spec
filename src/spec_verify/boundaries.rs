@@ -346,12 +346,12 @@ mod tests {
 name: "边界"
 ---
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - crates/spec-parser/**
 
-### 禁止做
+### Forbidden
 - crates/spec-gateway/**
 "#,
         )
@@ -412,12 +412,12 @@ name: "边界"
 name: "边界"
 ---
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - crates/spec-gateway/**
 
-### 禁止做
+### Forbidden
 - crates/spec-gateway/src/lib.rs
 "#,
         )
@@ -446,12 +446,12 @@ name: "边界"
 name: "边界"
 ---
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - crates/other/**
 
-### 禁止做
+### Forbidden
 - tests/golden/**
 "#;
 
@@ -531,9 +531,9 @@ name: "边界"
 name: "边界"
 ---
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - Cargo.toml
 - Cargo.lock
 - src/**
@@ -562,9 +562,9 @@ name: "边界"
 name: "边界"
 ---
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - src/**
 "#,
         )

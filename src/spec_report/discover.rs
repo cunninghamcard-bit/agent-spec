@@ -4,17 +4,19 @@
 //! refinement. No AI.
 
 /// Build a draft `.spec.md` skeleton: one scenario per test function (bound via
-/// `测试:`), placeholder steps, and a `## Questions` seed.
+/// `Test:`), placeholder steps, and a `## Questions` seed.
 pub fn draft_spec_from_tests(test_names: &[String], spec_name: &str) -> String {
     let mut out = format!(
-        "spec: task\nname: \"{spec_name}\"\n---\n\n## 意图\n\n[由 discover 自动草拟] 为现有测试反向补齐 Task Contract;请人工细化意图。\n\n## 完成条件\n\n"
+        "spec: task\nname: \"{spec_name}\"\n---\n\n## Intent\n\n[由 discover 自动草拟] 为现有测试反向补齐 Task Contract;请人工细化意图。\n\n## Completion Criteria\n\n"
     );
     if test_names.is_empty() {
-        out.push_str("场景: 占位场景\n  当 [待人工填写触发动作]\n  那么 [待人工填写可观察结果]\n");
+        out.push_str(
+            "Scenario: 占位场景\n  When [待人工填写触发动作]\n  Then [待人工填写可观察结果]\n",
+        );
     } else {
         for t in test_names {
             out.push_str(&format!(
-                "场景: {t}\n  测试: {t}\n  当 [待人工填写触发动作]\n  那么 [待人工填写可观察结果]\n\n"
+                "Scenario: {t}\n  Test: {t}\n  When [待人工填写触发动作]\n  Then [待人工填写可观察结果]\n\n"
             ));
         }
     }
@@ -45,8 +47,8 @@ mod tests {
     #[test]
     fn test_draft_creates_scenario_per_test() {
         let d = draft_spec_from_tests(&["test_a".into(), "test_b".into()], "drafted");
-        assert!(d.contains("测试: test_a"));
-        assert!(d.contains("测试: test_b"));
+        assert!(d.contains("Test: test_a"));
+        assert!(d.contains("Test: test_b"));
         assert_eq!(scenario_count(&d), 2);
     }
 

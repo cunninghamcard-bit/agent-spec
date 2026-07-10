@@ -47,19 +47,20 @@ Writing a Contract is the **highest-value human activity** in the agent-spec wor
 
 ## Quick Reference
 
-| Section | Chinese Header | English Header | Purpose |
-|---------|---------------|----------------|---------|
-| Intent | `## 意图` | `## Intent` | What to do and why |
-| Constraints | `## 约束` | `## Constraints` | Must / Must NOT rules |
-| Decisions | `## 已定决策` / `## 决策` | `## Decisions` | Fixed technical choices |
-| Boundaries | `## 边界` | `## Boundaries` | Allowed / Forbidden / Out-of-scope |
-| Acceptance Criteria | `## 验收标准` / `## 完成条件` | `## Acceptance Criteria` / `## Completion Criteria` | BDD scenarios |
-| Out of Scope | `## 排除范围` | `## Out of Scope` | Explicitly excluded items |
+| Section | Header | Purpose |
+|---------|--------|---------|
+| Intent | `## Intent` | What to do and why |
+| Constraints | `## Constraints` | Must / Must NOT rules |
+| Decisions | `## Decisions` | Fixed technical choices |
+| Boundaries | `## Boundaries` | Allowed / Forbidden / Out-of-scope |
+| Acceptance Criteria | `## Acceptance Criteria` / `## Completion Criteria` | BDD scenarios |
+| Out of Scope | `## Out of Scope` | Explicitly excluded items |
 
 ## Hard Syntax Rules
 
-- Use exactly one supported section header per line. Good: `## Intent` or `## 意图`. Bad: `## Intent / 意图`.
-- Write scenarios as bare DSL lines under the acceptance section. Good: `Scenario:` / `场景:`. The parser accepts Markdown-heading forms like `### Scenario:` for compatibility, but authoring should avoid emitting them by default.
+- **Structural keywords are English-only (as of agent-spec 0.4.0).** Section headers, `Scenario:`, step keywords, and selector keys must be English. CJK keywords are rejected with an actionable error naming the replacement (e.g. `keywords must be English; '场景:' is not recognized — use 'Scenario:'`). Free text — scenario titles, step prose, quoted parameters — may be any language.
+- Use exactly one supported section header per line. Good: `## Intent`.
+- Write scenarios as bare DSL lines under the acceptance section. Good: `Scenario:`. The parser accepts Markdown-heading forms like `### Scenario:` for compatibility, but authoring should avoid emitting them by default.
 - Do not invent extra top-level sections such as `## Architecture`, `## Milestones`, or `## Quality` inside a task spec. Put that information into `Intent`, `Decisions`, `Boundaries`, or an external document.
 - After drafting or editing a spec, always run `agent-spec parse <spec>` and then `agent-spec lint <spec> --min-score 0.7`.
 
@@ -160,7 +161,7 @@ One focused paragraph. Not a feature list — a clear statement of purpose.
 - Focus on "what to do and why"
 - Mention context (what already exists, where this fits)
 - Keep it to 2-4 sentences
-- Do not combine bilingual section labels on the same header line
+- Prose may be any language; section headers must be the English keywords
 
 ### 2. Decisions — Fixed Technical Choices
 
@@ -221,32 +222,32 @@ BDD scenarios with explicit test bindings.
 ```spec
 ## Completion Criteria
 
-场景: 注册成功                                    ← 1 happy path
-  测试: test_register_returns_201
-  假设 不存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交注册请求:
+Scenario: 注册成功                                ← 1 happy path
+  Test: test_register_returns_201
+  Given 不存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交注册请求:
     | 字段     | 值                |
     | email    | alice@example.com |
     | password | Str0ng!Pass#2026  |
-  那么 响应状态码为 201
-  并且 响应体包含 "user_id"
+  Then 响应状态码为 201
+  And 响应体包含 "user_id"
 
-场景: 重复邮箱被拒绝                              ← exception path 1
-  测试: test_register_rejects_duplicate_email
-  假设 已存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交相同邮箱的注册请求
-  那么 响应状态码为 409
+Scenario: 重复邮箱被拒绝                          ← exception path 1
+  Test: test_register_rejects_duplicate_email
+  Given 已存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交相同邮箱的注册请求
+  Then 响应状态码为 409
 
-场景: 弱密码被拒绝                                ← exception path 2
-  测试: test_register_rejects_weak_password
-  假设 不存在邮箱为 "bob@example.com" 的用户
-  当 客户端提交密码为 "123" 的注册请求
-  那么 响应状态码为 400
+Scenario: 弱密码被拒绝                            ← exception path 2
+  Test: test_register_rejects_weak_password
+  Given 不存在邮箱为 "bob@example.com" 的用户
+  When 客户端提交密码为 "123" 的注册请求
+  Then 响应状态码为 400
 
-场景: 缺少必填字段                                ← exception path 3
-  测试: test_register_rejects_missing_fields
-  当 客户端提交缺少 email 字段的注册请求
-  那么 响应状态码为 400
+Scenario: 缺少必填字段                            ← exception path 3
+  Test: test_register_rejects_missing_fields
+  When 客户端提交缺少 email 字段的注册请求
+  Then 响应状态码为 400
 ```
 
 This forces you to think through edge cases **before coding begins**. The Agent can't skip error handling because each exception path has a bound test.
@@ -323,13 +324,13 @@ Constraints and decisions are **inherited downward**. Task specs inherit from pr
 
 ## BDD Step Keywords
 
-| English | Chinese | Usage |
-|---------|---------|-------|
-| `Given` | `假设` | Precondition |
-| `When` | `当` | Action |
-| `Then` | `那么` | Expected result |
-| `And` | `并且` | Additional step (same type as previous) |
-| `But` | `但是` | Negative additional step |
+| Keyword | Usage |
+|---------|-------|
+| `Given` | Precondition |
+| `When` | Action |
+| `Then` | Expected result |
+| `And` | Additional step (same type as previous) |
+| `But` | Negative additional step |
 
 ## Test Selector Patterns
 
@@ -355,16 +356,13 @@ Scenario: Cross-crate verification
   Then passes
 ```
 
-### Chinese equivalents
+Scenario titles and prose may be any language — only the keywords are English:
 
 ```spec
-场景: 正常路径
-  测试: test_happy_path
-
-场景: 跨包验证
-  测试:
-    包: spec-gateway
-    过滤: test_contract_prompt_format
+Scenario: 跨包验证
+  Test:
+    Package: spec-gateway
+    Filter: test_contract_prompt_format
 ```
 
 ## Step Tables

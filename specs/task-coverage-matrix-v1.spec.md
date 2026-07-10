@@ -6,7 +6,7 @@ depends: [task-bdd-semantics-v1]
 estimate: 2d
 ---
 
-## 意图
+## Intent
 
 把 agent-spec 现有的显式 `Test:` selector 变现成一张**机械组装**的覆盖矩阵:
 每个 scenario 一行,列出它归属的 Rule、绑定的测试选择器、该测试是否真实存在、
@@ -15,7 +15,7 @@ estimate: 2d
 共同数据底座。它顺带提供 §9.4 承诺的"dangling selector 检测"——指向不存在测试的
 selector 被机械标出,缓解 `Test:` selector 与测试函数名耦合的代价。
 
-## 已定决策
+## Decisions
 
 - 新增只读子命令 `agent-spec matrix <spec> --code .`,支持 `--format text|json|markdown`。
 - **CLI 运行语义锁定**:`matrix` 内部跑一次验证,语义等价于 `verify` 的默认模式;接受与 `verify` 同款 flags:`--ai-mode`(默认 `off`)、`--change`、`--change-scope`(默认 `none`)。verdict 列直接来自这次验证报告,不另搞一套验证语义,避免与 `verify`/`lifecycle` 分叉。
@@ -30,9 +30,9 @@ selector 被机械标出,缓解 `Test:` selector 与测试函数名耦合的代�
 - `explain --format markdown` 内嵌该矩阵(作为新段落,PR 验收材料)。
 - 矩阵是 observability,**不改变 `is_passing` 语义,不引入任何新门禁**。
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 
 - src/spec_core/verify.rs（**仅新增** `EvidenceProvenance` 类型 + `ScenarioResult.provenance` additive 字段；不改 verdict/汇总计算逻辑）
 - src/spec_verify/mod.rs（**仅在** `run_verification` 按 verifier 名打 provenance 戳 + 构造点补字段；不改各 verifier 的 verdict）
@@ -45,7 +45,7 @@ selector 被机械标出,缓解 `Test:` selector 与测试函数名耦合的代�
 
 > 注:边界检查的 verdict 仍是 `BoundariesVerifier` 产出的**单条 synthetic scenario**(`[boundaries] ...`),作为普通 row 出现在矩阵里,**不**作为每个业务 scenario 的 per-row 列。v1 不引入 `boundary_relevant` 列。
 
-### 禁止做
+### Forbidden
 
 - 不要修改 `is_passing` / `is_passing_with_review_mode` 函数体,或任何 verifier 的 verdict 判定逻辑。
 - 不要让覆盖矩阵的组装过程调用 AI / LLM——矩阵结构必须机械可复现。
@@ -53,137 +53,137 @@ selector 被机械标出,缓解 `Test:` selector 与测试函数名耦合的代�
 - 不要在本期实现 capability-scope 行(Phase 3)或跨 spec cross-check(Phase 5)。
 - `verify.rs` / `mod.rs` 的改动仅限上面"允许修改"括注的范围;新增 additive 字段导致的测试夹具机械补全沿用 Phase 1 的 carve-out(仅 `#[cfg(test)]` 夹具补 `provenance: None`)。
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: matrix-assembly-is-mechanical — 矩阵由 parser + 测试扫描 + 验证报告机械组装
 
-场景: 每个 scenario 一行且字段正确
-  测试:
-    过滤: test_matrix_has_one_row_per_scenario
-  假设 一份 spec 含 1 个 Rule、2 个绑定到存在测试的 scenario
-  当 调用 `build_coverage_matrix` 并全部验证通过
-  那么 矩阵恰好有 2 行
-  并且 每行的 `rule` 为该 Rule id、`test_selector` 为对应 selector、`verdict` 为 `pass`
+Scenario: 每个 scenario 一行且字段正确
+  Test:
+    Filter: test_matrix_has_one_row_per_scenario
+  Given 一份 spec 含 1 个 Rule、2 个绑定到存在测试的 scenario
+  When 调用 `build_coverage_matrix` 并全部验证通过
+  Then 矩阵恰好有 2 行
+  And 每行的 `rule` 为该 Rule id、`test_selector` 为对应 selector、`verdict` 为 `pass`
 
-场景: markdown 格式渲染为表格
-  测试:
-    过滤: test_matrix_markdown_renders_table
-  假设 一份含 Rule 与 scenario 的 spec
-  当 运行 `agent-spec matrix <spec> --code . --format markdown`
-  那么 输出包含一个 markdown 表格,表头含 `Rule`、`Scenario`、`Test`、`Verdict`、`Provenance` 列
+Scenario: markdown 格式渲染为表格
+  Test:
+    Filter: test_matrix_markdown_renders_table
+  Given 一份含 Rule 与 scenario 的 spec
+  When 运行 `agent-spec matrix <spec> --code . --format markdown`
+  Then 输出包含一个 markdown 表格,表头含 `Rule`、`Scenario`、`Test`、`Verdict`、`Provenance` 列
 
-场景: json 格式可机器解析
-  测试:
-    过滤: test_matrix_json_is_machine_parseable
-  假设 一份含 Rule 与 scenario 的 spec
-  当 运行 `agent-spec matrix <spec> --code . --format json`
-  那么 输出是合法 JSON
-  并且 含 `rows` 数组,每个元素有 `scenario`、`test_found`、`verdict` 字段
+Scenario: json 格式可机器解析
+  Test:
+    Filter: test_matrix_json_is_machine_parseable
+  Given 一份含 Rule 与 scenario 的 spec
+  When 运行 `agent-spec matrix <spec> --code . --format json`
+  Then 输出是合法 JSON
+  And 含 `rows` 数组,每个元素有 `scenario`、`test_found`、`verdict` 字段
 
 ### Rule: dangling-selector-detection — 机械标出指向不存在测试的 selector
 
-场景: selector 指向不存在的测试记为 missing
-  测试:
-    过滤: test_matrix_flags_dangling_selector_as_missing
-  假设 某 scenario 绑定 `测试: test_does_not_exist_anywhere`,且代码中无此测试函数
-  当 构建覆盖矩阵
-  那么 该行 `test_found` 为 `missing`
-  并且 矩阵整体不会因此 panic 或中止
+Scenario: selector 指向不存在的测试记为 missing
+  Test:
+    Filter: test_matrix_flags_dangling_selector_as_missing
+  Given 某 scenario 绑定 `测试: test_does_not_exist_anywhere`,且代码中无此测试函数
+  When 构建覆盖矩阵
+  Then 该行 `test_found` 为 `missing`
+  And 矩阵整体不会因此 panic 或中止
 
-场景: test_found 要求精确函数名而非子串匹配
-  测试:
-    过滤: test_matrix_test_found_requires_exact_function_name
-  假设 测试索引含函数 `test_register_returns_201`,某 scenario 绑定 `测试: register`(子串,非精确函数名)
-  当 构建覆盖矩阵
-  那么 该行 `test_found` 为 `missing`
-  并且 精确绑定 `测试: test_register_returns_201` 的 scenario 同图中记 `found`
+Scenario: test_found 要求精确函数名而非子串匹配
+  Test:
+    Filter: test_matrix_test_found_requires_exact_function_name
+  Given 测试索引含函数 `test_register_returns_201`,某 scenario 绑定 `测试: register`(子串,非精确函数名)
+  When 构建覆盖矩阵
+  Then 该行 `test_found` 为 `missing`
+  And 精确绑定 `测试: test_register_returns_201` 的 scenario 同图中记 `found`
 
-场景: 无 selector 的 scenario 记为 none
-  测试:
-    过滤: test_matrix_marks_scenario_without_selector_as_none
-  假设 某 scenario 没有 `测试:` selector
-  当 构建覆盖矩阵
-  那么 该行 `test_selector` 为 `—`、`test_found` 为 `none`
-  并且 该行 `verdict` 为 `skip`
+Scenario: 无 selector 的 scenario 记为 none
+  Test:
+    Filter: test_matrix_marks_scenario_without_selector_as_none
+  Given 某 scenario 没有 `测试:` selector
+  When 构建覆盖矩阵
+  Then 该行 `test_selector` 为 `—`、`test_found` 为 `none`
+  And 该行 `verdict` 为 `skip`
 
 ### Rule: provenance-distinguishes-evidence-source — verdict 标注机械还是推理来源
 
-场景: 机械 verifier 的 verdict 标为 computational
-  测试:
-    过滤: test_provenance_test_verifier_is_computational
-  假设 某 scenario 由 TestVerifier 产出 `pass`
-  当 `run_verification` 汇总结果
-  那么 该 `ScenarioResult.provenance` 为 `Computational`
+Scenario: 机械 verifier 的 verdict 标为 computational
+  Test:
+    Filter: test_provenance_test_verifier_is_computational
+  Given 某 scenario 由 TestVerifier 产出 `pass`
+  When `run_verification` 汇总结果
+  Then 该 `ScenarioResult.provenance` 为 `Computational`
 
-场景: AI stub 的 uncertain 标为 inferential
-  测试:
-    过滤: test_provenance_ai_stub_is_inferential
-  假设 某未被机械 verifier 覆盖的 scenario 在 `AiMode::Stub` 下产出 `uncertain`
-  当 `run_verification` 汇总结果
-  那么 该 `ScenarioResult.provenance` 为 `Inferential`
+Scenario: AI stub 的 uncertain 标为 inferential
+  Test:
+    Filter: test_provenance_ai_stub_is_inferential
+  Given 某未被机械 verifier 覆盖的 scenario 在 `AiMode::Stub` 下产出 `uncertain`
+  When `run_verification` 汇总结果
+  Then 该 `ScenarioResult.provenance` 为 `Inferential`
 
-场景: caller-mode 经 resolve-ai 写回的结果标为 inferential
-  测试:
-    过滤: test_provenance_resolve_ai_is_inferential
-  假设 一个 Skip 结果经 `resolve-ai` 用外部 AI decision 改写
-  当 写回 AI decision 时
-  那么 该结果 `provenance` 为 `Inferential`
-  并且 该结果 `evidence` 含 `Evidence::AiAnalysis`
+Scenario: caller-mode 经 resolve-ai 写回的结果标为 inferential
+  Test:
+    Filter: test_provenance_resolve_ai_is_inferential
+  Given 一个 Skip 结果经 `resolve-ai` 用外部 AI decision 改写
+  When 写回 AI decision 时
+  Then 该结果 `provenance` 为 `Inferential`
+  And 该结果 `evidence` 含 `Evidence::AiAnalysis`
 
-场景: 矩阵从 AiAnalysis 证据兜底派生 inferential
-  测试:
-    过滤: test_matrix_derives_inferential_from_ai_evidence
-  假设 某结果 `provenance` 为 `None` 但 `evidence` 含 `Evidence::AiAnalysis`
-  当 构建覆盖矩阵
-  那么 该行 `provenance` 显示为 `inferential`
+Scenario: 矩阵从 AiAnalysis 证据兜底派生 inferential
+  Test:
+    Filter: test_matrix_derives_inferential_from_ai_evidence
+  Given 某结果 `provenance` 为 `None` 但 `evidence` 含 `Evidence::AiAnalysis`
+  When 构建覆盖矩阵
+  Then 该行 `provenance` 显示为 `inferential`
 
 ### Rule: matrix-is-observability-not-a-gate — 矩阵不改变验证语义
 
-场景: 构建矩阵不改变 is_passing
-  测试:
-    过滤: test_matrix_does_not_change_is_passing
-  假设 一份全部场景 verdict 为 `pass` 的验证报告
-  当 构建并渲染覆盖矩阵后再调用 `is_passing`
-  那么 `is_passing` 仍为 true
-  并且 `report.summary` 的各计数未被矩阵代码改动
+Scenario: 构建矩阵不改变 is_passing
+  Test:
+    Filter: test_matrix_does_not_change_is_passing
+  Given 一份全部场景 verdict 为 `pass` 的验证报告
+  When 构建并渲染覆盖矩阵后再调用 `is_passing`
+  Then `is_passing` 仍为 true
+  And `report.summary` 的各计数未被矩阵代码改动
 
-场景: provenance 字段 JSON 只增不减
-  测试:
-    过滤: test_json_provenance_additive_only
-  假设 一个未打 provenance 的 `ScenarioResult`(provenance 为 None)
-  当 序列化为 JSON
-  那么 不出现 `provenance` 键
-  并且 旧消费方看到的结构不变
+Scenario: provenance 字段 JSON 只增不减
+  Test:
+    Filter: test_json_provenance_additive_only
+  Given 一个未打 provenance 的 `ScenarioResult`(provenance 为 None)
+  When 序列化为 JSON
+  Then 不出现 `provenance` 键
+  And 旧消费方看到的结构不变
 
-场景: 未分组 scenario 的 rule 列为占位符
-  测试:
-    过滤: test_matrix_ungrouped_scenario_rule_column_is_dash
-  假设 某 spec 的 scenario 没有归属任何 Rule
-  当 构建覆盖矩阵
-  那么 该行 `rule` 为 `—`
-  并且 矩阵正常生成不报错
+Scenario: 未分组 scenario 的 rule 列为占位符
+  Test:
+    Filter: test_matrix_ungrouped_scenario_rule_column_is_dash
+  Given 某 spec 的 scenario 没有归属任何 Rule
+  When 构建覆盖矩阵
+  Then 该行 `rule` 为 `—`
+  And 矩阵正常生成不报错
 
 ### Rule: matrix-command-matches-verify-semantics — matrix 运行语义对齐 verify
 
-场景: matrix 默认以 verify 默认模式运行
-  测试:
-    过滤: test_matrix_command_runs_verification_in_default_mode
-  假设 一份 scenario 未被机械 verifier 覆盖的 spec
-  当 运行 `agent-spec matrix <spec> --code .`(不带 `--ai-mode`)
-  那么 该行 `verdict` 为 `skip`(默认 `--ai-mode off`,与 `verify` 默认一致)
-  并且 不产出 `uncertain`(未隐式开启 AI)
+Scenario: matrix 默认以 verify 默认模式运行
+  Test:
+    Filter: test_matrix_command_runs_verification_in_default_mode
+  Given 一份 scenario 未被机械 verifier 覆盖的 spec
+  When 运行 `agent-spec matrix <spec> --code .`(不带 `--ai-mode`)
+  Then 该行 `verdict` 为 `skip`(默认 `--ai-mode off`,与 `verify` 默认一致)
+  And 不产出 `uncertain`(未隐式开启 AI)
 
 ### Rule: explain-embeds-the-matrix — 覆盖矩阵进入 PR 验收材料
 
-场景: explain markdown 内嵌覆盖矩阵
-  测试:
-    过滤: test_explain_markdown_embeds_coverage_matrix
-  假设 一份含 Rule、scenario 与绑定测试的 spec
-  当 运行 `agent-spec explain <spec> --code . --format markdown`
-  那么 输出包含覆盖矩阵表格段落
-  并且 同时保留原有的 Contract 与验证结果摘要
+Scenario: explain markdown 内嵌覆盖矩阵
+  Test:
+    Filter: test_explain_markdown_embeds_coverage_matrix
+  Given 一份含 Rule、scenario 与绑定测试的 spec
+  When 运行 `agent-spec explain <spec> --code . --format markdown`
+  Then 输出包含覆盖矩阵表格段落
+  And 同时保留原有的 Contract 与验证结果摘要
 
-## 排除范围
+## Out of Scope
 
 - capability-scope 行与 promote(Phase 3)
 - 跨 spec cross-check 矩阵 / `lint --cross-check`(Phase 5)

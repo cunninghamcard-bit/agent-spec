@@ -339,17 +339,17 @@ mod tests {
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: refund-idempotent — 退款幂等
-场景: 首次退款
-  测试: test_first_refund
-  当 退款
-  那么 成功
-场景: 重复退款
-  测试: test_dup_refund
-  当 再次退款
-  那么 不重复
+Scenario: 首次退款
+  Test: test_first_refund
+  When 退款
+  Then 成功
+Scenario: 重复退款
+  Test: test_dup_refund
+  When 再次退款
+  Then 不重复
 "#;
 
     #[test]
@@ -377,12 +377,12 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 悬挂
-  测试: test_does_not_exist_anywhere
-  当 a
-  那么 b
+Scenario: 悬挂
+  Test: test_does_not_exist_anywhere
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         let m = build_coverage_matrix(&resolved, None, &idx(&["test_other"]));
@@ -395,16 +395,16 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 子串
-  测试: register
-  当 a
-  那么 b
-场景: 精确
-  测试: test_register_returns_201
-  当 a
-  那么 b
+Scenario: 子串
+  Test: register
+  When a
+  Then b
+Scenario: 精确
+  Test: test_register_returns_201
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         // Index has the full function name; "register" is only a substring.
@@ -421,11 +421,11 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 无绑定
-  当 a
-  那么 b
+Scenario: 无绑定
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         let report = VerificationReport::from_results("x".into(), vec![skip_result("无绑定")]);
@@ -441,12 +441,12 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 未分组
-  测试: test_x
-  当 a
-  那么 b
+Scenario: 未分组
+  Test: test_x
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         let m = build_coverage_matrix(&resolved, None, &idx(&["test_x"]));
@@ -460,11 +460,11 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: AI 场景
-  当 a
-  那么 b
+Scenario: AI 场景
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         // Result has AiAnalysis evidence but provenance was never stamped.
@@ -556,12 +556,12 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: a | b
-  测试: sel | x
-  当 a
-  那么 b
+Scenario: a | b
+  Test: sel | x
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         let md = build_coverage_matrix(&resolved, None, &HashSet::new()).to_markdown();
@@ -630,12 +630,12 @@ name: "x"
 name: "x"
 ---
 
-## 完成条件
+## Completion Criteria
 
-场景: 普通
-  测试: test_x
-  当 a
-  那么 b
+Scenario: 普通
+  Test: test_x
+  When a
+  Then b
 "#;
         let resolved = resolved_of(input);
         let report = VerificationReport::from_results(

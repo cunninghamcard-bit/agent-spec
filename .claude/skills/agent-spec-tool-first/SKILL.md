@@ -107,7 +107,7 @@ Catches: malformed structure, zero-scenario acceptance sections, vague verbs, un
 **Required self-checks before coding:**
 - `agent-spec parse` must show the expected section count and a non-zero scenario count for task specs.
 - If `Acceptance Criteria: 0 scenarios` appears, stop and rewrite the spec before running `contract` or `lifecycle`.
-- The parser accepts Markdown-heading forms like `### Scenario:` and `### Test:` for compatibility, but authoring should still emit bare `Scenario:` / `场景:` and `Test:` / `测试:` lines by default. Do not invent extra top-level sections like `## Milestones`.
+- The parser accepts Markdown-heading forms like `### Scenario:` and `### Test:` for compatibility, but authoring should still emit bare `Scenario:` and `Test:` lines by default. Structural keywords are English-only (as of 0.4.0); free text may be any language. Do not invent extra top-level sections like `## Milestones`.
 
 **Unbound Observable Behavior review:**
 - After `parse + lint`, ask which stdout, stderr, file, network, cache, and persisted-state behaviors are still unbound.

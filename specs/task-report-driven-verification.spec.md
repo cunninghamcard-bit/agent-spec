@@ -4,14 +4,14 @@ inherits: project
 tags: [verify, report, junit, polyglot, node]
 ---
 
-## 意图
+## Intent
 
 让非 Rust 项目也能接入机械验证：spec 在 frontmatter 声明项目自己的测试命令
 `test_command` 与报告路径 `test_report`，验证时运行该命令一次，解析生成的
 JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出判定。
 现有 cargo 直跑路径保持不变，report mode 是新增的可选路径。
 
-## 已定决策
+## Decisions
 
 - frontmatter 新增 `test_command`（字符串，项目自己的测试命令）与 `test_report`（JUnit XML 报告路径，相对 `--code` 根目录）
 - 声明了 `test_command` 的 spec 走 report mode；未声明的 spec 走现有 cargo 直跑路径，行为不变
@@ -24,9 +24,9 @@ JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出�
 - `test_command` 支持可选占位符 `{selectors}`：执行前替换为该 spec 全部场景 selector 的正则交替模式（形如 `(selector_a|selector_b)`），selector 中的正则元字符以反斜杠转义；命令中不含占位符时原样执行
 - 边界校验修复（本任务门禁的前置依赖）：`Allowed Changes` 支持裸清单文件名条目（`.toml`、`.lock`、`.md` 后缀）；变更路径为绝对路径且直接剥除失败时，用规范化后的工作区根再次剥除，使其以相对路径参与边界匹配
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - src/spec_parser/meta.rs
 - src/spec_core/**
 - src/spec_verify/**
@@ -37,122 +37,122 @@ JUnit XML 报告，按每个场景的 `Test:` selector 名字对号入座给出�
 - specs/task-report-driven-verification.spec.md
 - README.md
 
-### 禁止做
+### Forbidden
 - 不要改变未声明 `test_command` 的 spec 的验证行为
 - 不要把"selector 查无此名"判成 pass 或 skip
 - 不要新增 `quick-xml` 以外的第三方依赖
 - 不要改动 pass、fail、skip、uncertain 四种判定的既有语义
 
-## 排除范围
+## Out of Scope
 
 - 混合路由（同一 spec 内不同场景走不同 runner）
 - 按测试框架逐家适配 CLI 参数（vitest、jest 等的命令由项目写在 `test_command` 里）
 - JUnit XML 以外的报告格式
 
-## 完成条件
+## Completion Criteria
 
-场景: 报告中的同名测试通过则场景判 pass
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_passes_when_named_testcase_passes
-  假设 某 spec 声明了 `test_command` 且命令生成的 JUnit 报告包含名为 "register rejects duplicate" 的通过 testcase
-  当 对绑定 selector "register rejects duplicate" 的场景执行验证
-  那么 该场景判定为 pass
-  并且 evidence 记录命中的 testcase 名
+Scenario: 报告中的同名测试通过则场景判 pass
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_passes_when_named_testcase_passes
+  Given 某 spec 声明了 `test_command` 且命令生成的 JUnit 报告包含名为 "register rejects duplicate" 的通过 testcase
+  When 对绑定 selector "register rejects duplicate" 的场景执行验证
+  Then 该场景判定为 pass
+  And evidence 记录命中的 testcase 名
 
-场景: 报告中的同名测试失败则场景判 fail 且证据包含失败信息
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_fails_with_failure_evidence
-  假设 JUnit 报告中同名 testcase 带有 failure 节点
-  当 对该场景执行验证
-  那么 该场景判定为 fail
-  并且 evidence 包含 failure 节点的 message 文本
+Scenario: 报告中的同名测试失败则场景判 fail 且证据包含失败信息
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_fails_with_failure_evidence
+  Given JUnit 报告中同名 testcase 带有 failure 节点
+  When 对该场景执行验证
+  Then 该场景判定为 fail
+  And evidence 包含 failure 节点的 message 文本
 
-场景: selector 在报告中查无此名判 fail
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_fails_when_selector_not_in_report
-  假设 JUnit 报告中不存在与 selector 匹配的 testcase
-  当 对该场景执行验证
-  那么 该场景判定为 fail
-  并且 reason 说明 selector 未命中任何 testcase
+Scenario: selector 在报告中查无此名判 fail
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_fails_when_selector_not_in_report
+  Given JUnit 报告中不存在与 selector 匹配的 testcase
+  When 对该场景执行验证
+  Then 该场景判定为 fail
+  And reason 说明 selector 未命中任何 testcase
 
-场景: 报告中被 skip 的测试不判 pass
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_skipped_testcase_is_not_pass
-  假设 JUnit 报告中同名 testcase 带有 skipped 节点
-  当 对该场景执行验证
-  那么 该场景判定为 fail
-  并且 reason 说明该 testcase 被跳过
+Scenario: 报告中被 skip 的测试不判 pass
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_skipped_testcase_is_not_pass
+  Given JUnit 报告中同名 testcase 带有 skipped 节点
+  When 对该场景执行验证
+  Then 该场景判定为 fail
+  And reason 说明该 testcase 被跳过
 
-场景: selector 匹配多个 testcase 判 fail 并列出候选
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_ambiguous_match_fails_with_candidates
-  假设 JUnit 报告中存在两个 name 都以同一 selector 结尾的 testcase
-  当 对该场景执行验证
-  那么 该场景判定为 fail
-  并且 reason 列出全部候选 testcase 名
+Scenario: selector 匹配多个 testcase 判 fail 并列出候选
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_ambiguous_match_fails_with_candidates
+  Given JUnit 报告中存在两个 name 都以同一 selector 结尾的 testcase
+  When 对该场景执行验证
+  Then 该场景判定为 fail
+  And reason 列出全部候选 testcase 名
 
-场景: 报告文件缺失时判 fail 并给出可操作错误
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_missing_report_fails_with_actionable_error
-  假设 某 spec 的 `test_command` 执行后未在 `test_report` 路径生成文件
-  当 对该 spec 执行验证
-  那么 该 spec 的 report-mode 场景判定为 fail
-  并且 reason 包含期望的报告文件路径
+Scenario: 报告文件缺失时判 fail 并给出可操作错误
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_missing_report_fails_with_actionable_error
+  Given 某 spec 的 `test_command` 执行后未在 `test_report` 路径生成文件
+  When 对该 spec 执行验证
+  Then 该 spec 的 report-mode 场景判定为 fail
+  And reason 包含期望的报告文件路径
 
-场景: Package 字段按 classname 前缀过滤
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_package_filters_by_classname_prefix
-  假设 JUnit 报告中两个同名 testcase 的 classname 前缀不同
-  当 场景使用带 `Package:` 的结构化 selector 执行验证
-  那么 只有 classname 前缀匹配的 testcase 参与判定
-  并且 该场景判定为 pass
+Scenario: Package 字段按 classname 前缀过滤
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_package_filters_by_classname_prefix
+  Given JUnit 报告中两个同名 testcase 的 classname 前缀不同
+  When 场景使用带 `Package:` 的结构化 selector 执行验证
+  Then 只有 classname 前缀匹配的 testcase 参与判定
+  And 该场景判定为 pass
 
-场景: test_command 的 selectors 占位符替换为全部 selector 交替模式
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_substitutes_selectors_placeholder
-  假设 某 spec 的 `test_command` 包含 `{selectors}` 且合约有两个场景 selector
-  当 report mode 组装待执行命令
-  那么 占位符被替换为 "(selector_a|selector_b)" 形式的交替模式
-  并且 命令其余部分保持原样
+Scenario: test_command 的 selectors 占位符替换为全部 selector 交替模式
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_substitutes_selectors_placeholder
+  Given 某 spec 的 `test_command` 包含 `{selectors}` 且合约有两个场景 selector
+  When report mode 组装待执行命令
+  Then 占位符被替换为 "(selector_a|selector_b)" 形式的交替模式
+  And 命令其余部分保持原样
 
-场景: selector 中的正则元字符在占位符替换时被转义
-  测试:
-    包: agent-spec
-    过滤: test_report_mode_escapes_regex_metacharacters_in_selectors
-  假设 某场景 selector 含有正则元字符 "."
-  当 report mode 组装待执行命令
-  那么 交替模式中的元字符以反斜杠转义
-  并且 替换后的命令不因元字符改变匹配范围
+Scenario: selector 中的正则元字符在占位符替换时被转义
+  Test:
+    Package: agent-spec
+    Filter: test_report_mode_escapes_regex_metacharacters_in_selectors
+  Given 某场景 selector 含有正则元字符 "."
+  When report mode 组装待执行命令
+  Then 交替模式中的元字符以反斜杠转义
+  And 替换后的命令不因元字符改变匹配范围
 
-场景: 边界条目支持裸清单文件名
-  测试:
-    包: agent-spec
-    过滤: test_boundary_bare_manifest_filenames_are_path_boundaries
-  假设 Allowed Changes 含条目 "Cargo.toml"
-  当 变更集包含相对路径 "Cargo.toml"
-  那么 边界校验判定该变更被允许
+Scenario: 边界条目支持裸清单文件名
+  Test:
+    Package: agent-spec
+    Filter: test_boundary_bare_manifest_filenames_are_path_boundaries
+  Given Allowed Changes 含条目 "Cargo.toml"
+  When 变更集包含相对路径 "Cargo.toml"
+  Then 边界校验判定该变更被允许
 
-场景: 绝对变更路径相对化后参与边界匹配
-  测试:
-    包: agent-spec
-    过滤: test_boundary_absolute_change_paths_relativized_against_workspace_root
-  假设 变更路径是工作区根下某文件的绝对路径且工作区根以相对形式给出
-  当 边界校验规范化该变更集
-  那么 该变更以相对路径与允许模式匹配
+Scenario: 绝对变更路径相对化后参与边界匹配
+  Test:
+    Package: agent-spec
+    Filter: test_boundary_absolute_change_paths_relativized_against_workspace_root
+  Given 变更路径是工作区根下某文件的绝对路径且工作区根以相对形式给出
+  When 边界校验规范化该变更集
+  Then 该变更以相对路径与允许模式匹配
 
-场景: 未声明 test_command 的 spec 保持 cargo 直跑行为
-  测试:
-    包: agent-spec
-    过滤: test_specs_without_test_command_keep_cargo_path
-  假设 某 spec 的 frontmatter 未声明 `test_command`
-  当 对该 spec 执行验证
-  那么 验证走现有 cargo 直跑路径
-  并且 判定结果与本次改动之前一致
+Scenario: 未声明 test_command 的 spec 保持 cargo 直跑行为
+  Test:
+    Package: agent-spec
+    Filter: test_specs_without_test_command_keep_cargo_path
+  Given 某 spec 的 frontmatter 未声明 `test_command`
+  When 对该 spec 执行验证
+  Then 验证走现有 cargo 直跑路径
+  And 判定结果与本次改动之前一致

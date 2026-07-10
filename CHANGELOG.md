@@ -6,6 +6,17 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed (BREAKING)
+
+- **English-only structural keywords (0.4.0).** Adopting the specwright
+  fork's judgment: the parser hard-rejects CJK structural keywords (section
+  headers, `场景:`/`测试:`/`包:`/`过滤:`, step keywords 假设/当/那么/并且/但是,
+  and all other aliases) with an actionable error naming the English
+  replacement, e.g. `keywords must be English; '场景:' is not recognized —
+  use 'Scenario:'`. Descriptive free text (scenario titles, step prose,
+  quoted parameters) may remain in any language. The repo's own spec corpus
+  is migrated, and a regression test keeps it English-only.
+
 ### Added
 
 - **Report-driven verification (report mode).** Specs may declare

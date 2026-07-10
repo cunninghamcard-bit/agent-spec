@@ -13,16 +13,18 @@ tags: [tag1, tag2]   # Optional, for filtering
 capability: auth     # Optional (0.3.0): the capability this task contributes a Rule to
 ```
 
-## Section Headers (Bilingual)
+## Section Headers
 
-| Section | Chinese | English |
-|---------|---------|---------|
-| Intent | `## 意图` | `## Intent` |
-| Constraints | `## 约束` | `## Constraints` |
-| Decisions | `## 已定决策` / `## 决策` | `## Decisions` |
-| Boundaries | `## 边界` | `## Boundaries` |
-| Acceptance Criteria | `## 验收标准` / `## 完成条件` | `## Acceptance Criteria` / `## Completion Criteria` |
-| Out of Scope | `## 排除范围` | `## Out of Scope` |
+Structural keywords are English-only (as of agent-spec 0.4.0). CJK keywords are rejected with an error naming the English replacement. Free text (titles, prose, quoted params) may be any language.
+
+| Section | Header |
+|---------|--------|
+| Intent | `## Intent` |
+| Constraints | `## Constraints` |
+| Decisions | `## Decisions` |
+| Boundaries | `## Boundaries` |
+| Acceptance Criteria | `## Acceptance Criteria` / `## Completion Criteria` |
+| Out of Scope | `## Out of Scope` |
 
 ## Invalid Near-Misses
 
@@ -30,13 +32,13 @@ These look plausible to a general-purpose LLM, but should not be emitted:
 
 ```spec
 ## Intent / 意图
-## Completion Criteria / 完成标准
+## 完成条件
 ## Milestones
 ## Quality
 ## Architecture
 ```
 
-Use one supported header language per line and only the supported top-level sections.
+Use only the supported English top-level sections.
 
 ## Parser Accepts But Authoring Should Avoid By Default
 
@@ -77,63 +79,63 @@ inherits: project
 tags: [api, auth]
 ---
 
-## 意图
+## Intent
 
 为现有的认证模块添加用户注册 endpoint。新用户通过邮箱+密码注册，
 注册成功后发送验证邮件。这是用户体系的第一步，后续会在此基础上
 添加登录和密码重置。
 
-## 已定决策
+## Decisions
 
 - 路由: POST /api/v1/auth/register
 - 密码哈希: bcrypt, cost factor = 12
 - 验证 Token: crypto.randomUUID(), 存数据库, 24h 过期
 - 邮件: 使用现有 EmailService，不新建
 
-## 边界
+## Boundaries
 
-### 允许修改
+### Allowed Changes
 - crates/api/src/auth/**
 - crates/api/tests/auth/**
 - migrations/
 
-### 禁止做
+### Forbidden
 - 不要添加新的 npm/cargo 依赖
 - 不要修改现有的登录 endpoint
 - 不要在注册流程中创建 session
 
-## 验收标准
+## Acceptance Criteria
 
-场景: 注册成功
-  测试: test_register_returns_201_for_new_user
-  假设 不存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交注册请求:
+Scenario: 注册成功
+  Test: test_register_returns_201_for_new_user
+  Given 不存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交注册请求:
     | 字段     | 值                |
     | email    | alice@example.com |
     | password | Str0ng!Pass#2026  |
-  那么 响应状态码为 201
-  并且 响应体包含 "user_id"
-  并且 EmailService.sendVerification 被调用
+  Then 响应状态码为 201
+  And 响应体包含 "user_id"
+  And EmailService.sendVerification 被调用
 
-场景: 重复邮箱被拒绝
-  测试: test_register_rejects_duplicate_email
-  假设 已存在邮箱为 "alice@example.com" 的用户
-  当 客户端提交相同邮箱的注册请求
-  那么 响应状态码为 409
+Scenario: 重复邮箱被拒绝
+  Test: test_register_rejects_duplicate_email
+  Given 已存在邮箱为 "alice@example.com" 的用户
+  When 客户端提交相同邮箱的注册请求
+  Then 响应状态码为 409
 
-场景: 弱密码被拒绝
-  测试: test_register_rejects_weak_password
-  假设 不存在邮箱为 "bob@example.com" 的用户
-  当 客户端提交密码为 "123" 的注册请求
-  那么 响应状态码为 400
-  并且 响应体包含密码强度要求
+Scenario: 弱密码被拒绝
+  Test: test_register_rejects_weak_password
+  Given 不存在邮箱为 "bob@example.com" 的用户
+  When 客户端提交密码为 "123" 的注册请求
+  Then 响应状态码为 400
+  And 响应体包含密码强度要求
 
-场景: 缺少必填字段
-  测试: test_register_rejects_missing_fields
-  当 客户端提交缺少 email 字段的注册请求
-  那么 响应状态码为 400
+Scenario: 缺少必填字段
+  Test: test_register_rejects_missing_fields
+  When 客户端提交缺少 email 字段的注册请求
+  Then 响应状态码为 400
 
-## 排除范围
+## Out of Scope
 
 - 登录功能
 - 密码重置
@@ -175,9 +177,9 @@ If `parse` reports `0 scenarios`, the spec is not ready for `contract`, `lifecyc
 ```
 
 Category keywords recognized:
-- Allowed: `允许`, `allowed`, `allow`
-- Forbidden: `禁止`, `forbidden`, `forbid`, `deny`
-- Out of Scope: `排除`, `out of scope`, `scope`
+- Allowed: `allowed`, `allow`
+- Forbidden: `forbidden`, `forbid`, `deny`
+- Out of Scope: `out of scope`, `scope`
 
 ## Scenario Patterns
 
@@ -191,12 +193,14 @@ Scenario: Happy path
   Then result
 ```
 
+Free text stays language-neutral — only the keywords are English:
+
 ```spec
-场景: 正常路径
-  测试: test_happy_path
-  假设 前置条件
-  当 执行操作
-  那么 预期结果
+Scenario: 正常路径
+  Test: test_happy_path
+  Given 前置条件
+  When 执行操作
+  Then 预期结果
 ```
 
 ### Structured test selector
@@ -209,16 +213,6 @@ Scenario: Cross-crate verification
   Given a task spec
   When verified
   Then passes
-```
-
-```spec
-场景: 跨 crate 验证
-  测试:
-    包: spec-gateway
-    过滤: test_contract_prompt_format
-  假设 一个任务 spec
-  当 验证时
-  那么 通过
 ```
 
 ### Step tables
@@ -236,20 +230,20 @@ Scenario: Batch processing
 
 ## Step Keywords
 
-| English | Chinese | Type |
-|---------|---------|------|
-| Given | 假设 | Precondition |
-| When | 当 | Action |
-| Then | 那么 | Assertion |
-| And | 并且 | Continue previous |
-| But | 但是 | Negative continue |
+| Keyword | Type |
+|---------|------|
+| Given | Precondition |
+| When | Action |
+| Then | Assertion |
+| And | Continue previous |
+| But | Negative continue |
 
 ## Parameters
 
 Quoted strings are extracted as parameters:
 
 ```spec
-假设 存在一笔金额为 "100.00" 元的交易 "TXN-001"
+Given 存在一笔金额为 "100.00" 元的交易 "TXN-001"
 ```
 
 Extracts: `["100.00", "TXN-001"]`
@@ -349,22 +343,22 @@ agent-spec:   Write Contract 15min + Read explain 5min + Approve 2min = ~22min
 ### Rule → Example grouping
 
 ```spec
-## 完成条件
+## Completion Criteria
 
 ### Rule: reject-invalid-input — 拒绝非法输入
-场景: 空邮箱被拒绝
-  测试: test_rejects_empty_email
-  当 提交空邮箱
-  那么 返回 400
+Scenario: 空邮箱被拒绝
+  Test: test_rejects_empty_email
+  When 提交空邮箱
+  Then 返回 400
 
-场景: 弱密码被拒绝
-  测试: test_rejects_weak_password
-  当 提交密码 "123"
-  那么 返回 400
+Scenario: 弱密码被拒绝
+  Test: test_rejects_weak_password
+  When 提交密码 "123"
+  Then 返回 400
 ```
 
 - Rule id = leading kebab-case token (`reject-invalid-input`); separated from the mutable display name by an em dash `—` or two-or-more spaces (a plain `--` is NOT a recognized separator — it gets swallowed into the id and trips `bdd-rule-id`).
-- English form: `### Rule: reject-invalid-input — Reject invalid input`. `Example:` is a synonym for `场景:`/`Scenario:`.
+- `Example:` is a synonym for `Scenario:`.
 - Identity lives in the id, never the display name. Lints: `bdd-rule-id` (malformed id), `bdd-rule-grouping` (ungrouped scenarios).
 
 ### Discovery questions (non-blocking)
@@ -376,7 +370,7 @@ agent-spec:   Write Contract 15min + Read explain 5min + Approve 2min = ~22min
 - [x] 退款按折后价(已确认)
 ```
 
-- Headers: `## Questions` / `## 问题` / `## 待澄清`. Resolved markers: `[x]`, `[已解决]`, `RESOLVED`, `已解决`.
+- Header: `## Questions`. Resolved markers: `[x]`, `RESOLVED`.
 - `open-question` lint is Info/Warning only — never affects `is_passing`.
 
 ### lint-ack (acknowledge a warning with a reason)
@@ -396,7 +390,7 @@ spec: capability
 name: "认证能力"
 ---
 
-## 完成条件
+## Completion Criteria
 
 ### Rule: reject-invalid-input — 拒绝非法输入
 （promoted from task; id preserved）
@@ -411,7 +405,7 @@ name: "认证能力"
 agent-spec discover --from-codebase --code src --name "drafted from tests" --out specs/draft.spec.md
 ```
 
-Produces one `测试:`-bound scenario per test fn + a `## Questions` seed. The draft is parseable but NOT a finished contract — refine intent and the seeded questions.
+Produces one `Test:`-bound scenario per test fn + a `## Questions` seed. The draft is parseable but NOT a finished contract — refine intent and the seeded questions.
 
 The 15 minutes spent writing a Contract is higher-value than the 30 minutes spent reading a diff, because you're defining "what is correct" instead of guessing "is this code correct".
 
