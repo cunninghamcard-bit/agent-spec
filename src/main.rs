@@ -1579,7 +1579,10 @@ impl GitChangeScope {
 }
 
 fn find_command_repo_root(spec: &Path, code: &Path) -> Option<PathBuf> {
-    for candidate in [code, spec, Path::new(".")] {
+    // No process-cwd fallback: if neither --code nor the spec path is inside
+    // a git repo, the change set is empty rather than borrowed from an
+    // unrelated repository the process happens to run in.
+    for candidate in [code, spec] {
         if let Some(root) = find_git_repo_root(candidate) {
             return Some(root);
         }
@@ -1588,7 +1591,7 @@ fn find_command_repo_root(spec: &Path, code: &Path) -> Option<PathBuf> {
 }
 
 fn find_guard_repo_root(spec_dir: &Path, code: &Path) -> Option<PathBuf> {
-    for candidate in [code, spec_dir, Path::new(".")] {
+    for candidate in [code, spec_dir] {
         if let Some(root) = find_git_repo_root(candidate) {
             return Some(root);
         }
@@ -3606,6 +3609,20 @@ Scenario: Contract alias
         assert!(resolved[0].to_string_lossy().ends_with("src/lib.rs"));
 
         let _ = fs::remove_dir_all(repo);
+    }
+
+    #[test]
+    fn test_repo_root_discovery_ignores_process_cwd() {
+        // cargo test runs with cwd inside this git repo; neither candidate
+        // below is in a repo, so discovery must return None instead of
+        // falling back to the process cwd.
+        let dir = make_temp_dir("agent-spec-cli-cwd-fallback");
+        fs::create_dir_all(dir.join("specs")).unwrap();
+
+        assert!(super::find_guard_repo_root(&dir.join("specs"), &dir).is_none());
+        assert!(super::find_command_repo_root(&dir.join("specs/x.spec.md"), &dir).is_none());
+
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]
