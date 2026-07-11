@@ -77,7 +77,7 @@ Rule: staged-birth — artifacts are born by their workflow step
 
 Scenario: init births only the contract
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_init_feature_creates_spec_only_e2e
     Level: e2e
     Test Double: none
@@ -89,7 +89,7 @@ Scenario: init births only the contract
 
 Scenario: plan births the planning artifacts
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_plan_out_births_plan_and_tasks_e2e
     Level: e2e
     Test Double: none
@@ -102,7 +102,7 @@ Rule: stationed-surface — every subcommand has a declared station
 
 Scenario: help is grouped by flow
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_help_groups_commands_by_flow_e2e
     Level: e2e
     Test Double: none
@@ -114,7 +114,7 @@ Scenario: help is grouped by flow
 
 Scenario: every command is documented in the audit artifact
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_tool_first_reference_covers_all_subcommands
   Given the agent-spec-tool-first commands reference
   When the documented names are compared against the CLI's subcommand list
@@ -122,7 +122,7 @@ Scenario: every command is documented in the audit artifact
 
 Scenario: the sdd skill stations every flow
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_sdd_skill_documents_five_flows
   Given the embedded agent-spec-sdd skill
   When its content is inspected
@@ -133,7 +133,7 @@ Rule: single-household — docs/ is the one home for contracts and capabilities
 
 Scenario: promote targets the docs household
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_promote_targets_docs_capabilities_e2e
     Level: e2e
     Test Double: none
@@ -144,7 +144,7 @@ Scenario: promote targets the docs household
 
 Scenario: install-hooks guards the docs household
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_install_hooks_targets_docs_home_e2e
     Level: e2e
     Test Double: none
@@ -156,7 +156,7 @@ Scenario: install-hooks guards the docs household
 
 Scenario: inheritance resolves from the relocated constitution
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_goal_spec_inherits_relocated_project_constitution_e2e
     Level: e2e
     Test Double: none
@@ -167,7 +167,7 @@ Scenario: inheritance resolves from the relocated constitution
 
 Scenario: guard collects only the docs home
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_guard_collects_docs_contracts_e2e
     Level: e2e
     Test Double: none
@@ -180,7 +180,7 @@ Rule: declared-invariants — workflow invariants are stated and mechanically wa
 
 Scenario: lifecycle warns on parallel dirty goals
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_lifecycle_warns_on_multiple_dirty_goals_e2e
     Level: e2e
     Test Double: none

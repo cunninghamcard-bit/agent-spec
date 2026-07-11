@@ -527,7 +527,7 @@ impl SpecLinter for ScenarioPresenceLinter {
                     "task spec has an Acceptance Criteria section but no parseable scenarios".into(),
                 span: *acceptance_sections[0].1,
                 suggestion: Some(
-                    "write scenarios using bare `Scenario:` lines, or run `agent-spec parse` to inspect the AST".into(),
+                    "write scenarios using bare `Scenario:` lines, or run `docwright parse` to inspect the AST".into(),
                 ),
             }];
         }
@@ -581,7 +581,7 @@ impl SpecLinter for ResearchRequiredLinter {
             message: "unresolved clarification markers with no research.md beside the spec".into(),
             span: crate::spec_core::Span::line(0),
             suggestion: Some(
-                "run `agent-spec research <spec> --code .` and resolve each unknown there".into(),
+                "run `docwright research <spec> --code .` and resolve each unknown there".into(),
             ),
         }]
     }
@@ -2547,7 +2547,7 @@ mod tests {
 
     fn research_lint_fixture(dir_tag: &str, with_research: bool, cite: bool) -> SpecDocument {
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-research-lint-{dir_tag}-{}",
+            "docwright-research-lint-{dir_tag}-{}",
             std::process::id()
         ));
         let _ = std::fs::remove_dir_all(&dir);
@@ -2583,7 +2583,7 @@ mod tests {
                 .suggestion
                 .as_deref()
                 .unwrap_or_default()
-                .contains("agent-spec research"),
+                .contains("docwright research"),
             "must name the resolution path"
         );
     }

@@ -1,13 +1,13 @@
-# agent-spec
+# docwright
 
-<!-- agent-spec:governs: src/main.rs -->
+<!-- docwright:governs: src/main.rs -->
 
-[![Crates.io](https://img.shields.io/crates/v/agent-spec.svg)](https://crates.io/crates/agent-spec)
-[![docs.rs](https://docs.rs/agent-spec/badge.svg)](https://docs.rs/agent-spec)
-[![CI](https://github.com/ZhangHanDong/agent-spec/actions/workflows/contract-guard.yml/badge.svg)](https://github.com/ZhangHanDong/agent-spec/actions/workflows/contract-guard.yml)
+[![Crates.io](https://img.shields.io/crates/v/docwright.svg)](https://crates.io/crates/docwright)
+[![docs.rs](https://docs.rs/docwright/badge.svg)](https://docs.rs/docwright)
+[![CI](https://github.com/ZhangHanDong/docwright/actions/workflows/contract-guard.yml/badge.svg)](https://github.com/ZhangHanDong/docwright/actions/workflows/contract-guard.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`agent-spec` is an AI-native BDD/spec verification tool for task execution.
+`docwright` is an AI-native BDD/spec verification tool for task execution.
 
 The core idea is simple:
 
@@ -17,15 +17,15 @@ The core idea is simple:
 
 The primary planning surface is the **Task Contract**. The older `brief` view remains available as a compatibility alias, but new workflows should use `contract`.
 
-## What agent-spec doesn't solve
+## What docwright doesn't solve
 
 We want you to know up-front. These are real limits, not roadmap stubs:
 
-- **Cold-start product judgment.** `agent-spec` verifies whether code satisfies a contract; it does not tell you whether the contract describes the right product. You still need product sense to write good Rules and Scenarios. A planned `agent-spec discover --from-codebase` (Phase 9) will help bootstrap a spec library from existing code + tests, but not from a blank page.
+- **Cold-start product judgment.** `docwright` verifies whether code satisfies a contract; it does not tell you whether the contract describes the right product. You still need product sense to write good Rules and Scenarios. A planned `docwright discover --from-codebase` (Phase 9) will help bootstrap a spec library from existing code + tests, but not from a blank page.
 - **Architectural taste at the line where it matters.** Lint catches what's expressible in the DSL — boundaries, vague verbs, missing test bindings, dangling selectors. Naming clarity, abstraction choice, the line between "appropriate" and "inappropriate" coupling — these need human review or inferential AI review (Phase 5+).
 - **NFR ceiling.** Functional behavior bound to `cargo test` is fully verifiable today. Performance, reliability, scalability — these need specialized runners (criterion, k6, external probes; planned Phase 7) and even then the honest verdict is often `uncertain` or `pending_review`, not `pass`.
 - **Test selector maintenance.** The mechanical coverage matrix is the moat, but it comes with a cost: renaming a test function breaks the contract until you update the spec. Tooling can detect dangling selectors, it cannot rename them for you.
-- **False sense of security.** A passing `lifecycle` means the contract was satisfied. It does not mean the contract was comprehensive. We recommend coupling `agent-spec lifecycle` with periodic human + AI architectural reviews (Phase 8 `agent-spec audit` will automate part of this).
+- **False sense of security.** A passing `lifecycle` means the contract was satisfied. It does not mean the contract was comprehensive. We recommend coupling `docwright lifecycle` with periodic human + AI architectural reviews (Phase 8 `docwright audit` will automate part of this).
 
 `docs/comparison-openspec-speckit.md` §9.4 expands these in context; `docs/bdd-spine-end-state.md` shows where each is addressed across Phases 1–9.
 
@@ -98,7 +98,7 @@ Scenario: 全额退款保持现有返回结构
 Start from a template:
 
 ```bash
-cargo run -q --bin agent-spec -- init --kind feature --name "User Registration API"
+cargo run -q --bin docwright -- init --kind feature --name "User Registration API"
 ```
 
 For rewrite/parity work, start with `--kind architecture` and use
@@ -109,10 +109,10 @@ as an authoring reference. Structural keywords and generated templates are Engli
 
 This repo ships four agent skills under [`skills/`](skills):
 
-- **`agent-spec-sdd`**: classifies substantial work and drives the DeepChat-inspired feature/issue/architecture goal-package workflow through the CLI.
-- **`agent-spec-tool-first`**: the default integration path — tells the agent to use `agent-spec` as a CLI tool and drive tasks through `contract`, `lifecycle`, and `guard`.
-- **`agent-spec-authoring`**: the authoring path — helps write or revise Task Contracts in the DSL.
-- **`agent-spec-estimate`**: the estimation path — maps Task Contract elements (scenarios, decisions, boundaries) to round-based effort estimates.
+- **`docwright-sdd`**: classifies substantial work and drives the DeepChat-inspired feature/issue/architecture goal-package workflow through the CLI.
+- **`docwright-tool-first`**: the default integration path — tells the agent to use `docwright` as a CLI tool and drive tasks through `contract`, `lifecycle`, and `guard`.
+- **`docwright-authoring`**: the authoring path — helps write or revise Task Contracts in the DSL.
+- **`docwright-estimate`**: the estimation path — maps Task Contract elements (scenarios, decisions, boundaries) to round-based effort estimates.
 
 For rewrite/parity work, the authoring path should explicitly bind observable behavior before coding:
 
@@ -129,25 +129,25 @@ See [`examples/rewrite-parity-contract.spec`](examples/rewrite-parity-contract.s
 ./install-skills.sh
 ```
 
-This installs the `agent-spec` CLI via `cargo install` (if not already present) and copies all four skills to `~/.claude/skills/`.
+This installs the `docwright` CLI via `cargo install` (if not already present) and copies all four skills to `~/.claude/skills/`.
 
 #### Manual install for Claude Code
 
 ```bash
 # Copy to your global skills directory
-cp -r skills/agent-spec-sdd ~/.claude/skills/
-cp -r skills/agent-spec-tool-first ~/.claude/skills/
-cp -r skills/agent-spec-authoring ~/.claude/skills/
-cp -r skills/agent-spec-estimate ~/.claude/skills/
+cp -r skills/docwright-sdd ~/.claude/skills/
+cp -r skills/docwright-tool-first ~/.claude/skills/
+cp -r skills/docwright-authoring ~/.claude/skills/
+cp -r skills/docwright-estimate ~/.claude/skills/
 ```
 
 Or symlink for auto-updates:
 
 ```bash
-ln -s "$(pwd)/skills/agent-spec-sdd" ~/.claude/skills/
-ln -s "$(pwd)/skills/agent-spec-tool-first" ~/.claude/skills/
-ln -s "$(pwd)/skills/agent-spec-authoring" ~/.claude/skills/
-ln -s "$(pwd)/skills/agent-spec-estimate" ~/.claude/skills/
+ln -s "$(pwd)/skills/docwright-sdd" ~/.claude/skills/
+ln -s "$(pwd)/skills/docwright-tool-first" ~/.claude/skills/
+ln -s "$(pwd)/skills/docwright-authoring" ~/.claude/skills/
+ln -s "$(pwd)/skills/docwright-estimate" ~/.claude/skills/
 ```
 
 #### Install for Codex
@@ -164,11 +164,11 @@ Copy [`.cursorrules`](.cursorrules) to your project root.
 
 #### Workflow
 
-1. Use `agent-spec-tool-first` to inspect the target spec and render `agent-spec contract`.
-2. Run `agent-spec plan <spec> --code . --format prompt` to generate a self-contained implementation prompt with codebase context.
+1. Use `docwright-tool-first` to inspect the target spec and render `docwright contract`.
+2. Run `docwright plan <spec> --code . --format prompt` to generate a self-contained implementation prompt with codebase context.
 3. Implement code against the Contract + Plan.
-4. Run `agent-spec lifecycle` for the task-level gate.
-5. Run `agent-spec guard` for repo-level validation when needed.
+4. Run `docwright lifecycle` for the task-level gate.
+5. Run `docwright guard` for repo-level validation when needed.
 
 Before step 2, if the task is a rewrite, migration, or parity effort, use the tool-first workflow to review which observable behaviors are still unbound. If stdout/stderr, `--json`, `-o/--output`, local/remote, cache state, or fallback order are only described in prose, go back to authoring mode and add scenarios first.
 
@@ -177,7 +177,7 @@ This keeps the main integration mode tool-first. Library embedding remains avail
 ### 2. Render the contract for agent execution
 
 ```bash
-cargo run -q --bin agent-spec -- contract docs/features/my-task/spec.md
+cargo run -q --bin docwright -- contract docs/features/my-task/spec.md
 ```
 
 Use `--format json` if another tool or agent runtime needs structured output.
@@ -185,7 +185,7 @@ Use `--format json` if another tool or agent runtime needs structured output.
 ### 2b. Generate plan context (Contract + Codebase + Task Sketch)
 
 ```bash
-cargo run -q --bin agent-spec -- plan docs/features/my-task/spec.md --code .
+cargo run -q --bin docwright -- plan docs/features/my-task/spec.md --code .
 ```
 
 `plan` outputs three blocks:
@@ -199,7 +199,7 @@ Use `--format prompt` for a self-contained AI prompt (includes mandatory verific
 ### 3. Run the full quality gate
 
 ```bash
-cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --format json
+cargo run -q --bin docwright -- lifecycle docs/features/my-task/spec.md --code . --format json
 ```
 
 `lifecycle` runs:
@@ -218,7 +218,7 @@ The run fails if:
 ### 4. Use the repo-level guard
 
 ```bash
-cargo run -q --bin agent-spec -- guard --spec-dir specs --code .
+cargo run -q --bin docwright -- guard --spec-dir specs --code .
 ```
 
 `guard` is intended for pre-commit / CI use. It collects every contract in the `docs/` household (goal `spec.md` files and the project constitution) and verifies them against the current change set. Capability specs in `docs/capabilities/` are collected but exempt from the task gates — their Rules were proven by task Examples at promote time.
@@ -228,7 +228,7 @@ Boundary checks run in **forbidden-only** mode under `guard`: `Forbidden` entrie
 ### 5. Contract Acceptance (replaces Code Review)
 
 ```bash
-cargo run -q --bin agent-spec -- explain docs/features/my-task/spec.md --code . --format markdown
+cargo run -q --bin docwright -- explain docs/features/my-task/spec.md --code . --format markdown
 ```
 
 `explain` renders a reviewer-friendly summary of the Contract + verification results. Use `--format markdown` for direct PR description paste. Use `--history` to include retry trajectory from run logs.
@@ -238,7 +238,7 @@ The reviewer judges two questions: (1) Is the Contract definition correct? (2) D
 ### 6. Stamp for traceability
 
 ```bash
-cargo run -q --bin agent-spec -- stamp docs/features/my-task/spec.md --code . --dry-run
+cargo run -q --bin docwright -- stamp docs/features/my-task/spec.md --code . --dry-run
 ```
 
 Outputs git trailers (`Spec-Name`, `Spec-Passing`, `Spec-Summary`) for the commit message. Currently only `--dry-run` is supported.
@@ -270,8 +270,8 @@ By default, scenarios are verified by running `cargo test <selector>` — which 
 ```spec
 spec: task
 name: "Admin panel registration"
-test_command: pnpm vitest run --reporter=junit --outputFile=.agent-spec/report.xml
-test_report: .agent-spec/report.xml
+test_command: pnpm vitest run --reporter=junit --outputFile=.docwright/report.xml
+test_report: .docwright/report.xml
 ---
 ```
 
@@ -288,19 +288,19 @@ Any framework that can emit JUnit XML works the same way: vitest/jest (`--report
 To run only the contract-bound tests instead of the whole suite, use the `{selectors}` placeholder — it expands to a regex alternation of all scenario selectors (metacharacters escaped):
 
 ```spec
-test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.agent-spec/report.xml
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
 ```
 
 Specs without `test_command` keep the existing cargo behavior unchanged.
 
 ## SDD Workflow (goal folders)
 
-For substantial work, use the dedicated `agent-spec-sdd` skill or invoke the CLI directly:
+For substantial work, use the dedicated `docwright-sdd` skill or invoke the CLI directly:
 
 ```bash
-agent-spec init --kind feature --name "Plugins Hub"
-agent-spec init --kind issue --name "Session Restore Jitter"
-agent-spec init --kind architecture --name "Agent Runtime Split"
+docwright init --kind feature --name "Plugins Hub"
+docwright init --kind issue --name "Session Restore Jitter"
+docwright init --kind architecture --name "Agent Runtime Split"
 ```
 
 The CLI creates one kebab-case folder per goal (a convention adapted from DeepChat's SDD):
@@ -312,29 +312,29 @@ The CLI creates one kebab-case folder per goal (a convention adapted from DeepCh
 Goal packages are born staged: `init` creates the authoritative `spec.md` only, and `plan --out` births `plan.md` and `tasks.md` when the planning step arrives. PlantUML stays inside Markdown fences. `guard --spec-dir` is repeatable; the default household is `docs/`:
 
 ```bash
-agent-spec guard --spec-dir specs --spec-dir docs/features/my-goal --code .
+docwright guard --spec-dir specs --spec-dir docs/features/my-goal --code .
 ```
 
 Draft the plan file mechanically, then refine it by hand:
 
 ```bash
-agent-spec plan docs/features/my-goal/spec.md --code . --format prompt --out docs/features/my-goal/plan.md
+docwright plan docs/features/my-goal/spec.md --code . --format prompt --out docs/features/my-goal/plan.md
 ```
 
 Contract anatomy for SDD work: use `## Current State` (where the code stands — spares the agent code archaeology), `## UX Shape` (ASCII interface sketches), and `## Open Questions`. A bracketed NEEDS-CLARIFICATION marker anywhere in a spec is an error-level lint — resolve every ambiguity before implementation.
 
-**Adopting agent-spec in a project.** One command installs governance:
+**Adopting docwright in a project.** One command installs governance:
 
 ```bash
-agent-spec integrate --into .
+docwright integrate --into .
 ```
 
-It installs the workflow skills for both agent systems (`.agents/skills/` for Codex, `.claude/skills/` for Claude Code) and writes a managed, prose-only policy block into AGENTS.md and CLAUDE.md — declaration files carry policy, never operations; commands live in the CLI and skills. Re-run after upgrading agent-spec to refresh both. Generated goal specs are prefilled with a vitest JUnit test binding when the project has a `package.json`.
+It installs the workflow skills for both agent systems (`.agents/skills/` for Codex, `.claude/skills/` for Claude Code) and writes a managed, prose-only policy block into AGENTS.md and CLAUDE.md — declaration files carry policy, never operations; commands live in the CLI and skills. Re-run after upgrading docwright to refresh both. Generated goal specs are prefilled with a vitest JUnit test binding when the project has a `package.json`.
 
 **Doc Impact Guard.** A maintained document can declare which code paths it governs with an invisible marker line:
 
 ```markdown
-<!-- agent-spec:governs: src/agent/**, src/shared/contracts/** -->
+<!-- docwright:governs: src/agent/**, src/shared/contracts/** -->
 ```
 
 When `guard` sees changes under governed paths without a matching update to the document, it prints a `documentation impact unresolved` warning (warning-level: guard's exit status is unaffected). Dates tell you a document is old — the governs edge tells you it is probably wrong. Declare governance sparingly, on load-bearing documents only.
@@ -342,15 +342,15 @@ When `guard` sees changes under governed paths without a matching update to the 
 **Research and learn.** When a spec carries clarification markers that reading the code cannot resolve, or the domain is unfamiliar, research is mandatory (the `research-required` lint enforces it):
 
 ```bash
-agent-spec research docs/features/my-goal/spec.md --code .
+docwright research docs/features/my-goal/spec.md --code .
 ```
 
-This scaffolds `research.md` beside the spec and machine-refreshes its Current Codebase State region; the investigation itself follows the `agent-spec-research` skill — primary sources, per-claim citations, findings as Decision/Rationale/Alternatives. Then the learning half: the agent grills the user through each finding's decision one at a time (writing a learning record per confirmed round) before contract authoring may begin. Understanding the norms and the codebase is the cost the contract reviewer must pay.
+This scaffolds `research.md` beside the spec and machine-refreshes its Current Codebase State region; the investigation itself follows the `docwright-research` skill — primary sources, per-claim citations, findings as Decision/Rationale/Alternatives. Then the learning half: the agent grills the user through each finding's decision one at a time (writing a learning record per confirmed round) before contract authoring may begin. Understanding the norms and the codebase is the cost the contract reviewer must pay.
 
 **Finishing a goal.** When a goal's contract verifies fully, graduate it:
 
 ```bash
-agent-spec finish docs/features/my-goal/spec.md --code .
+docwright finish docs/features/my-goal/spec.md --code .
 ```
 
 `finish` re-runs the lint + verify pipeline and aborts (deleting nothing) unless everything passes. On success it removes the consumable `plan.md` and `tasks.md`, keeps `spec.md` as the maintained contract (or removes the whole goal with `--retire`), and points at `promote` when the contract declares durable Rules. History is git's job — finish never writes archives.
@@ -358,11 +358,11 @@ agent-spec finish docs/features/my-goal/spec.md --code .
 Rules of thumb:
 
 - **Skip SDD for trivial work.** Style fixes, copy changes, and small localized logic edits do not need a contract; prefer skipping over creating a token artifact.
-- **Graduate completed work.** `agent-spec finish` removes plan.md/tasks.md, archives research.md and learning records into `docs/learning/<goal>/` (the decision-archaeology layer), and keeps the contract; `agent-spec promote` lifts durable rules into `docs/capabilities/` (the truth layer).
+- **Graduate completed work.** `docwright finish` removes plan.md/tasks.md, archives research.md and learning records into `docs/learning/<goal>/` (the decision-archaeology layer), and keeps the contract; `docwright promote` lifts durable rules into `docs/capabilities/` (the truth layer).
 
 ## The Five Flows
 
-Every subcommand has a station in one of five flows (run `agent-spec --help` for the full map):
+Every subcommand has a station in one of five flows (run `docwright --help` for the full map):
 
 - **Adoption** (once per repo): `integrate` → `install-hooks` → `discover` for brownfield projects. `gen-integrations` is integrate's ancestor, kept for compatibility.
 - **Goal lifecycle** (per goal): `init` → `research` → author the contract → `lint`/`contract` → `plan --out` → implement → `lifecycle` (with `parse`/`verify`/`matrix` as debugging internals) → `guard` → `stamp` at commit → `finish` → `promote`.
@@ -396,16 +396,16 @@ Examples:
 The relevant commands accept repeatable `--change` flags:
 
 ```bash
-cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
-cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
+cargo run -q --bin docwright -- verify docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
+cargo run -q --bin docwright -- lifecycle docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
 ```
 
 Single-task commands also support optional VCS-backed change discovery:
 
 ```bash
-cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --change-scope staged
-cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change-scope worktree
-cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change-scope jj
+cargo run -q --bin docwright -- verify docs/features/my-task/spec.md --code . --change-scope staged
+cargo run -q --bin docwright -- lifecycle docs/features/my-task/spec.md --code . --change-scope worktree
+cargo run -q --bin docwright -- lifecycle docs/features/my-task/spec.md --code . --change-scope jj
 ```
 
 Available scopes: `none` (default for verify/lifecycle), `staged`, `worktree`, `jj`.
@@ -414,13 +414,13 @@ When a `.jj/` directory is detected (even colocated with `.git/`), use `--change
 
 ## AI Verifier Skeleton
 
-`agent-spec` now includes a minimal AI verifier surface intended to make `uncertain` results explicit and inspectable before a real model backend is wired in.
+`docwright` now includes a minimal AI verifier surface intended to make `uncertain` results explicit and inspectable before a real model backend is wired in.
 
 The relevant commands accept:
 
 ```bash
-cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --ai-mode stub
-cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --ai-mode stub
+cargo run -q --bin docwright -- verify docs/features/my-task/spec.md --code . --ai-mode stub
+cargo run -q --bin docwright -- lifecycle docs/features/my-task/spec.md --code . --ai-mode stub
 ```
 
 Available modes:
@@ -429,7 +429,7 @@ Available modes:
 - `stub`: turns otherwise-uncovered scenarios into `uncertain` results with `AiAnalysis` evidence
 - `caller`: the calling Agent acts as the AI verifier (two-step protocol)
 
-`caller` mode enables the Agent running `agent-spec` to also serve as the AI verifier. When `lifecycle --ai-mode caller` finds skipped scenarios, it writes `AiRequest` objects to `.agent-spec/pending-ai-requests.json`. The Agent reads the requests, analyzes each scenario, writes `ScenarioAiDecision` JSON, then calls `resolve-ai --decisions <file>` to merge decisions back into the report.
+`caller` mode enables the Agent running `docwright` to also serve as the AI verifier. When `lifecycle --ai-mode caller` finds skipped scenarios, it writes `AiRequest` objects to `.docwright/pending-ai-requests.json`. The Agent reads the requests, analyzes each scenario, writes `ScenarioAiDecision` JSON, then calls `resolve-ai --decisions <file>` to merge decisions back into the report.
 
 `stub` mode does not claim success. It is only a scaffold for:
 
@@ -446,11 +446,11 @@ Internally, the AI layer now uses a pluggable backend shape:
 
 No real model provider is wired in yet. The current value is that the contract/reporting surface is now stable enough to add a real backend later without redesigning the verification pipeline.
 
-Provider selection and configuration are intentionally out of scope for `agent-spec` itself. The intended embedding model is:
+Provider selection and configuration are intentionally out of scope for `docwright` itself. The intended embedding model is:
 
 - the host agent owns provider/model/auth/timeout policy
 - the host agent injects an `AiBackend` into `spec-gateway`
-- `agent-spec` stays focused on contracts, evidence, and verification semantics
+- `docwright` stays focused on contracts, evidence, and verification semantics
 
 `guard` resolves change paths in this order:
 
@@ -463,7 +463,7 @@ Provider selection and configuration are intentionally out of scope for `agent-s
 If you want stronger boundary checks against the full current workspace, use:
 
 ```bash
-cargo run -q --bin agent-spec -- guard --spec-dir specs --code . --change-scope worktree
+cargo run -q --bin docwright -- guard --spec-dir specs --code . --change-scope worktree
 ```
 
 `worktree` includes:
@@ -523,11 +523,11 @@ The current system is strongest when the contract can be checked by:
 - structural checks
 - boundary checks against an explicit or staged change set
 
-More advanced verifier layers can still be added, but the current model is already sufficient for self-hosting `agent-spec` with task contracts.
+More advanced verifier layers can still be added, but the current model is already sufficient for self-hosting `docwright` with task contracts.
 
 ## Contributing
 
-agent-spec is self-bootstrapping: the project uses itself to govern its own development. When you contribute, you follow the same Contract-driven workflow that agent-spec teaches.
+docwright is self-bootstrapping: the project uses itself to govern its own development. When you contribute, you follow the same Contract-driven workflow that docwright teaches.
 
 ### The contribution flow
 
@@ -535,25 +535,25 @@ Every substantial change starts with a Task Contract. Before writing code, creat
 
 ```bash
 # 1. Create a task contract for your change
-agent-spec init --kind feature --name "my-feature"
+docwright init --kind feature --name "my-feature"
 # Edit the generated spec: fill in Intent, Decisions, Boundaries, Completion Criteria
 
 # 2. Check that the contract itself is well-written
-agent-spec lint docs/features/my-feature/spec.md --min-score 0.7
+docwright lint docs/features/my-feature/spec.md --min-score 0.7
 
 # 3. Implement your change
 
 # 4. Verify against the contract
-agent-spec lifecycle docs/features/my-feature/spec.md --code . --change-scope worktree --format json
+docwright lifecycle docs/features/my-feature/spec.md --code . --change-scope worktree --format json
 
 # 5. Run the repo-wide guard before committing
-agent-spec guard --spec-dir docs --code .
+docwright guard --spec-dir docs --code .
 
 # 6. Generate the PR description
-agent-spec explain docs/features/my-feature/spec.md --code . --format markdown
+docwright explain docs/features/my-feature/spec.md --code . --format markdown
 ```
 
-The `guard` pre-commit hook is installed via `agent-spec install-hooks`. It checks every contract in the `docs/` household against your staged changes — your commit will be blocked if any contract fails.
+The `guard` pre-commit hook is installed via `docwright install-hooks`. It checks every contract in the `docs/` household against your staged changes — your commit will be blocked if any contract fails.
 
 ### Project-level rules
 
@@ -563,7 +563,7 @@ The file `docs/project.spec.md` defines constraints that every task spec inherit
 
 If you use Claude Code, Codex, Cursor, or another AI coding agent, install the skills from the [`skills/`](skills) directory (see [AI Agent Skills](#ai-agent-skills) above).
 
-The `agent-spec-tool-first` skill tells the agent to read the Contract first, implement within its Boundaries, run `lifecycle` to verify, and retry on failure without modifying the spec. The `agent-spec-authoring` skill helps the agent draft or revise Task Contracts in the DSL. The `agent-spec-estimate` skill maps Contract elements to round-based effort estimates for sprint planning.
+The `docwright-tool-first` skill tells the agent to read the Contract first, implement within its Boundaries, run `lifecycle` to verify, and retry on failure without modifying the spec. The `docwright-authoring` skill helps the agent draft or revise Task Contracts in the DSL. The `docwright-estimate` skill maps Contract elements to round-based effort estimates for sprint planning.
 
 For agents without skill support, the project includes `AGENTS.md` (Codex), `.cursorrules` (Cursor), and `.aider.conf.yml` (Aider) with the essential command reference.
 

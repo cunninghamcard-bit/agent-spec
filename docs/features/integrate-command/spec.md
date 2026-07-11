@@ -76,7 +76,7 @@ $ agent-spec init --kind feature --name "User Onboarding"
 
 Scenario: integrate installs skills for both agent systems
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_integrate_installs_skills_e2e
     Level: e2e
     Test Double: none
@@ -89,7 +89,7 @@ Scenario: integrate installs skills for both agent systems
 
 Scenario: integrate writes the managed policy block to both declaration files
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_integrate_writes_policy_blocks_e2e
     Level: e2e
     Test Double: none
@@ -101,7 +101,7 @@ Scenario: integrate writes the managed policy block to both declaration files
 
 Scenario: the policy block contains no operations
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_integration_policy_block_is_prose_only
   Given the canonical policy block
   When its content is inspected
@@ -110,7 +110,7 @@ Scenario: the policy block contains no operations
 
 Scenario: integrate preserves surrounding content and is idempotent
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_integrate_preserves_and_refreshes_e2e
     Level: e2e
     Test Double: none
@@ -122,7 +122,7 @@ Scenario: integrate preserves surrounding content and is idempotent
 
 Scenario: init prefills the vitest binding for Node projects
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_init_prefills_vitest_binding_for_node_e2e
     Level: e2e
     Test Double: none
@@ -134,7 +134,7 @@ Scenario: init prefills the vitest binding for Node projects
 
 Scenario: init emits no binding for Cargo projects
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_init_omits_binding_for_cargo_e2e
     Level: e2e
     Test Double: none

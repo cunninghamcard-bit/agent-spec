@@ -92,7 +92,7 @@ Commands by workflow flow:
 
 #[derive(Parser)]
 #[command(
-    name = "agent-spec",
+    name = "docwright",
     version,
     about = "AI-Native BDD/Spec verification tool",
     after_help = FLOWS_HELP,
@@ -292,7 +292,7 @@ enum Commands {
         #[arg(long, default_value = "text")]
         format: String,
     },
-    /// Install agent-spec governance into a target project (skills + managed policy blocks)
+    /// Install docwright governance into a target project (skills + managed policy blocks)
     Integrate {
         /// Target project directory
         #[arg(long, default_value = ".")]
@@ -787,7 +787,7 @@ fn cmd_audit(spec_dir: &Path, format: &str) -> Result<(), Box<dyn std::error::Er
         );
     } else {
         println!(
-            "agent-spec audit ({} specs in {})",
+            "docwright audit ({} specs in {})",
             report.spec_count,
             spec_dir.display()
         );
@@ -876,7 +876,7 @@ fn cmd_gen_integrations(
     let filename = |t: &str| match t {
         "agents" => "AGENTS.md",
         "cursor" => ".cursorrules",
-        _ => "agent-spec-tool-first.md",
+        _ => "docwright-tool-first.md",
     };
 
     let mut drifted = Vec::new();
@@ -1243,7 +1243,7 @@ fn cmd_lifecycle(
                         })
                 })
                 .collect();
-            let requests_path = code.join(".agent-spec/pending-ai-requests.json");
+            let requests_path = code.join(".docwright/pending-ai-requests.json");
             std::fs::create_dir_all(requests_path.parent().unwrap_or(Path::new(".")))?;
             std::fs::write(&requests_path, serde_json::to_string_pretty(&requests)?)?;
             true
@@ -1264,8 +1264,7 @@ fn cmd_lifecycle(
         });
         if ai_pending {
             json_out["ai_pending"] = serde_json::json!(true);
-            json_out["ai_requests_file"] =
-                serde_json::json!(".agent-spec/pending-ai-requests.json");
+            json_out["ai_requests_file"] = serde_json::json!(".docwright/pending-ai-requests.json");
         }
         if let Some(ref lr) = lint_report {
             json_out["quality_score"] = serde_json::json!(lr.quality_score.overall);
@@ -1497,7 +1496,7 @@ fn topological_sort_scenarios(scenarios: &[crate::spec_core::Scenario]) -> Vec<u
 
 fn cmd_brief(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Error>> {
     let gw = crate::spec_gateway::SpecGateway::load(spec)?;
-    eprintln!("warning: `agent-spec brief` is a compatibility alias; prefer `agent-spec contract`");
+    eprintln!("warning: `docwright brief` is a compatibility alias; prefer `docwright contract`");
     print!("{}", render_brief_output(&gw, format)?);
 
     Ok(())
@@ -1512,9 +1511,9 @@ fn cmd_contract(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Err
 
 // ── Guard (git pre-commit) ──────────────────────────────────────
 
-/// Install agent-spec governance into a target project: workflow skills for
+/// Install docwright governance into a target project: workflow skills for
 /// both agent systems plus a managed, prose-only policy block in AGENTS.md
-/// and CLAUDE.md. Idempotent; re-run after upgrading agent-spec.
+/// and CLAUDE.md. Idempotent; re-run after upgrading docwright.
 fn cmd_integrate(into: &Path) -> Result<(), Box<dyn std::error::Error>> {
     use crate::spec_report::integrations::{EMBEDDED_SKILLS, POLICY_BLOCK, upsert_managed_block};
 
@@ -1546,8 +1545,8 @@ fn cmd_integrate(into: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-const RESEARCH_GENERATED_START: &str = "<!-- agent-spec:generated:start -->";
-const RESEARCH_GENERATED_END: &str = "<!-- agent-spec:generated:end -->";
+const RESEARCH_GENERATED_START: &str = "<!-- docwright:generated:start -->";
+const RESEARCH_GENERATED_END: &str = "<!-- docwright:generated:end -->";
 
 fn research_template(goal_name: &str) -> String {
     format!(
@@ -1560,7 +1559,7 @@ derived_into: spec.md
 # {goal_name} — Research
 
 > Follow every claim back to the source that owns it. Primary sources
-> first; never trust parametric knowledge. See the agent-spec-research
+> first; never trust parametric knowledge. See the docwright-research
 > skill for the methodology.
 
 ## Unknowns
@@ -1576,7 +1575,7 @@ derived_into: spec.md
 ## Current Codebase State
 
 {RESEARCH_GENERATED_START}
-(run `agent-spec research` to fill this section)
+(run `docwright research` to fill this section)
 {RESEARCH_GENERATED_END}
 
 ## Findings
@@ -1645,7 +1644,7 @@ fn cmd_research(spec: &Path, code: &Path, depth: &str) -> Result<(), Box<dyn std
     std::fs::write(&research_path, updated)?;
     println!("refreshed codebase state in {}", research_path.display());
     println!(
-        "next: fill Unknowns and Industry Norms, then grill the user (agent-spec-research skill)"
+        "next: fill Unknowns and Industry Norms, then grill the user (docwright-research skill)"
     );
     Ok(())
 }
@@ -1773,7 +1772,7 @@ fn cmd_finish(
         })
         .sum();
     if rule_count > 0 {
-        println!("next: agent-spec promote ({rule_count} rule(s) eligible)");
+        println!("next: docwright promote ({rule_count} rule(s) eligible)");
     }
 
     Ok(())
@@ -1856,7 +1855,7 @@ fn cmd_guard(
     let effective_changes = resolve_guard_change_paths(first_dir, code, change, change_scope)?;
     if change.is_empty() && !effective_changes.is_empty() {
         eprintln!(
-            "agent-spec guard: detected {} {} change(s) from git",
+            "docwright guard: detected {} {} change(s) from git",
             effective_changes.len(),
             change_scope.label()
         );
@@ -1916,10 +1915,10 @@ fn cmd_guard(
     }
 
     if errors.is_empty() {
-        eprintln!("agent-spec guard: {} spec(s) passed", spec_files.len());
+        eprintln!("docwright guard: {} spec(s) passed", spec_files.len());
         Ok(())
     } else {
-        eprintln!("agent-spec guard: FAILED");
+        eprintln!("docwright guard: FAILED");
         for err in &errors {
             eprintln!("  - {err}");
         }
@@ -2418,7 +2417,7 @@ struct RunLogEntry {
 }
 
 fn write_run_log(base_dir: &Path, entry: &RunLogEntry) -> Result<(), Box<dyn std::error::Error>> {
-    let runs_dir = base_dir.join(".agent-spec/runs");
+    let runs_dir = base_dir.join(".docwright/runs");
     std::fs::create_dir_all(&runs_dir)?;
 
     let filename = format!(
@@ -2454,7 +2453,7 @@ enum ResumeMode {
 }
 
 fn checkpoint_path(base_dir: &Path) -> PathBuf {
-    base_dir.join(".agent-spec/checkpoint.json")
+    base_dir.join(".docwright/checkpoint.json")
 }
 
 fn load_checkpoint(
@@ -2562,7 +2561,7 @@ fn merge_checkpoint_results(
 }
 
 fn read_run_log_history(base_dir: &Path, spec_name: &str) -> String {
-    let runs_dir = base_dir.join(".agent-spec/runs");
+    let runs_dir = base_dir.join(".docwright/runs");
     let Ok(entries) = std::fs::read_dir(&runs_dir) else {
         return String::new();
     };
@@ -2641,14 +2640,14 @@ fn cmd_install_hooks() -> Result<(), Box<dyn std::error::Error>> {
 
     let pre_commit = hooks_dir.join("pre-commit");
     let hook_content = r#"#!/bin/sh
-# agent-spec pre-commit guard
-# Auto-installed by: agent-spec install-hooks
+# docwright pre-commit guard
+# Auto-installed by: docwright install-hooks
 
-if command -v agent-spec >/dev/null 2>&1; then
-    agent-spec guard --spec-dir docs --code . --min-score 0.6
+if command -v docwright >/dev/null 2>&1; then
+    docwright guard --spec-dir docs --code . --min-score 0.6
     exit $?
 else
-    echo "warning: agent-spec not found, skipping spec guard"
+    echo "warning: docwright not found, skipping spec guard"
     exit 0
 fi
 "#;
@@ -2656,16 +2655,16 @@ fi
     // Check if hook already exists
     if pre_commit.exists() {
         let existing = std::fs::read_to_string(&pre_commit)?;
-        if existing.contains("agent-spec") {
-            eprintln!("pre-commit hook already contains agent-spec guard");
+        if existing.contains("docwright") {
+            eprintln!("pre-commit hook already contains docwright guard");
             return Ok(());
         }
         // Append to existing hook
         let mut content = existing;
-        content.push_str("\n# agent-spec guard (appended)\n");
-        content.push_str("if command -v agent-spec >/dev/null 2>&1; then\n");
+        content.push_str("\n# docwright guard (appended)\n");
+        content.push_str("if command -v docwright >/dev/null 2>&1; then\n");
         content
-            .push_str("    agent-spec guard --spec-dir docs --code . --min-score 0.6 || exit $?\n");
+            .push_str("    docwright guard --spec-dir docs --code . --min-score 0.6 || exit $?\n");
         content.push_str("fi\n");
         std::fs::write(&pre_commit, content)?;
     } else {
@@ -2744,7 +2743,7 @@ fn cmd_init_sdd_at(
         .parent()
         .ok_or("SDD goal directory has no parent")?;
     std::fs::create_dir_all(parent)?;
-    let temp_dir = parent.join(format!(".{goal}.agent-spec-tmp-{}", std::process::id()));
+    let temp_dir = parent.join(format!(".{goal}.docwright-tmp-{}", std::process::id()));
     if temp_dir.exists() {
         std::fs::remove_dir_all(&temp_dir)?;
     }
@@ -2766,7 +2765,7 @@ fn cmd_init_sdd_at(
         println!("created {}", goal_dir.join(filename).display());
     }
     println!(
-        "next: agent-spec lint {}",
+        "next: docwright lint {}",
         goal_dir.join("spec.md").display()
     );
     Ok(())
@@ -2778,7 +2777,7 @@ fn cmd_init_sdd_at(
 fn detect_test_binding(project_root: &Path) -> Option<String> {
     if project_root.join("package.json").is_file() && !project_root.join("Cargo.toml").is_file() {
         return Some(
-            "test_command: pnpm vitest run -t \"{selectors}\" --reporter=junit --outputFile=.agent-spec/report.xml\ntest_report: .agent-spec/report.xml\n"
+            "test_command: pnpm vitest run -t \"{selectors}\" --reporter=junit --outputFile=.docwright/report.xml\ntest_report: .docwright/report.xml\n"
                 .to_string(),
         );
     }
@@ -2906,9 +2905,9 @@ derived_from:
 
 ## Quality Gates
 
-- [ ] `agent-spec lint spec.md --min-score 0.7`
-- [ ] `agent-spec lifecycle spec.md --code .`
-- [ ] `agent-spec guard --spec-dir . --code .`
+- [ ] `docwright lint spec.md --min-score 0.7`
+- [ ] `docwright lifecycle spec.md --code .`
+- [ ] `docwright guard --spec-dir . --code .`
 "#
     )
 }
@@ -3044,7 +3043,7 @@ fn cmd_resolve_ai(
     }
 
     // Clean up pending requests file if it exists
-    let requests_path = code.join(".agent-spec/pending-ai-requests.json");
+    let requests_path = code.join(".docwright/pending-ai-requests.json");
     if requests_path.exists() {
         let _ = std::fs::remove_file(&requests_path);
     }
@@ -3608,7 +3607,7 @@ Scenario: Repeated refund
         // An unbound scenario under default (--ai-mode off) must be skip, not
         // uncertain — matrix uses verify's default semantics.
         let dir = std::env::temp_dir().join(format!(
-            "agent_spec_matrix_{}",
+            "docwright_matrix_{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -3828,7 +3827,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_guard_change_paths_reads_staged_git_changes() {
-        let repo = make_temp_dir("agent-spec-cli-git");
+        let repo = make_temp_dir("docwright-cli-git");
         fs::create_dir_all(repo.join("src")).unwrap();
         fs::write(repo.join("src/lib.rs"), "pub fn demo() {}\n").unwrap();
 
@@ -3850,7 +3849,7 @@ Scenario: Contract alias
         // cargo test runs with cwd inside this git repo; neither candidate
         // below is in a repo, so discovery must return None instead of
         // falling back to the process cwd.
-        let dir = make_temp_dir("agent-spec-cli-cwd-fallback");
+        let dir = make_temp_dir("docwright-cli-cwd-fallback");
         fs::create_dir_all(dir.join("specs")).unwrap();
 
         assert!(super::find_guard_repo_root(&dir.join("specs"), &dir).is_none());
@@ -3861,7 +3860,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_guard_change_paths_returns_empty_outside_git_repo() {
-        let dir = make_temp_dir("agent-spec-cli-non-git");
+        let dir = make_temp_dir("docwright-cli-non-git");
         fs::create_dir_all(dir.join("specs")).unwrap();
 
         let resolved =
@@ -3874,7 +3873,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_guard_change_paths_reads_worktree_git_changes() {
-        let repo = make_temp_dir("agent-spec-cli-worktree");
+        let repo = make_temp_dir("docwright-cli-worktree");
         fs::create_dir_all(repo.join("src")).unwrap();
         fs::write(repo.join("src/staged.rs"), "pub fn staged() -> u8 { 1 }\n").unwrap();
         fs::write(
@@ -3884,8 +3883,8 @@ Scenario: Contract alias
         .unwrap();
 
         run_git(&repo, &["init"]);
-        run_git(&repo, &["config", "user.email", "agent-spec@example.com"]);
-        run_git(&repo, &["config", "user.name", "agent-spec"]);
+        run_git(&repo, &["config", "user.email", "docwright@example.com"]);
+        run_git(&repo, &["config", "user.name", "docwright"]);
         run_git(&repo, &["add", "src/staged.rs", "src/unstaged.rs"]);
         run_git(&repo, &["commit", "-m", "init"]);
 
@@ -3916,7 +3915,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_guard_change_paths_ignores_unstaged_changes_in_default_staged_scope() {
-        let repo = make_temp_dir("agent-spec-cli-staged-default");
+        let repo = make_temp_dir("docwright-cli-staged-default");
         fs::create_dir_all(repo.join("src")).unwrap();
         fs::write(repo.join("src/staged.rs"), "pub fn staged() -> u8 { 1 }\n").unwrap();
         fs::write(
@@ -3926,8 +3925,8 @@ Scenario: Contract alias
         .unwrap();
 
         run_git(&repo, &["init"]);
-        run_git(&repo, &["config", "user.email", "agent-spec@example.com"]);
-        run_git(&repo, &["config", "user.name", "agent-spec"]);
+        run_git(&repo, &["config", "user.email", "docwright@example.com"]);
+        run_git(&repo, &["config", "user.name", "docwright"]);
         run_git(&repo, &["add", "src/staged.rs", "src/unstaged.rs"]);
         run_git(&repo, &["commit", "-m", "init"]);
 
@@ -3979,7 +3978,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_command_change_paths_returns_empty_for_none_scope() {
-        let repo = make_temp_dir("agent-spec-cli-command-none");
+        let repo = make_temp_dir("docwright-cli-command-none");
         fs::create_dir_all(repo.join("specs")).unwrap();
         fs::create_dir_all(repo.join("src")).unwrap();
         fs::write(repo.join("src/lib.rs"), "pub fn demo() {}\n").unwrap();
@@ -4001,7 +4000,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_resolve_command_change_paths_reads_worktree_git_changes() {
-        let repo = make_temp_dir("agent-spec-cli-command-worktree");
+        let repo = make_temp_dir("docwright-cli-command-worktree");
         fs::create_dir_all(repo.join("specs")).unwrap();
         fs::create_dir_all(repo.join("src")).unwrap();
         fs::write(repo.join("src/staged.rs"), "pub fn staged() -> u8 { 1 }\n").unwrap();
@@ -4012,8 +4011,8 @@ Scenario: Contract alias
         .unwrap();
 
         run_git(&repo, &["init"]);
-        run_git(&repo, &["config", "user.email", "agent-spec@example.com"]);
-        run_git(&repo, &["config", "user.name", "agent-spec"]);
+        run_git(&repo, &["config", "user.email", "docwright@example.com"]);
+        run_git(&repo, &["config", "user.name", "docwright"]);
         run_git(&repo, &["add", "src/staged.rs", "src/unstaged.rs"]);
         run_git(&repo, &["commit", "-m", "init"]);
 
@@ -4049,20 +4048,20 @@ Scenario: Contract alias
     #[test]
     fn test_claude_code_tool_first_skill_exists_and_mentions_contract_lifecycle_guard() {
         let skill =
-            fs::read_to_string(repo_root().join(".claude/skills/agent-spec-tool-first/SKILL.md"))
+            fs::read_to_string(repo_root().join(".claude/skills/docwright-tool-first/SKILL.md"))
                 .unwrap();
 
-        assert!(skill.contains("agent-spec parse"));
-        assert!(skill.contains("agent-spec contract"));
-        assert!(skill.contains("agent-spec lifecycle"));
-        assert!(skill.contains("agent-spec guard"));
+        assert!(skill.contains("docwright parse"));
+        assert!(skill.contains("docwright contract"));
+        assert!(skill.contains("docwright lifecycle"));
+        assert!(skill.contains("docwright guard"));
         assert!(skill.contains("Tool-First Workflow"));
     }
 
     #[test]
     fn test_claude_code_authoring_skill_exists_and_mentions_task_contract_sections() {
         let skill =
-            fs::read_to_string(repo_root().join(".claude/skills/agent-spec-authoring/SKILL.md"))
+            fs::read_to_string(repo_root().join(".claude/skills/docwright-authoring/SKILL.md"))
                 .unwrap();
 
         assert!(skill.contains("Intent"));
@@ -4070,14 +4069,14 @@ Scenario: Contract alias
         assert!(skill.contains("Boundaries"));
         assert!(skill.contains("Completion Criteria"));
         assert!(skill.contains("Test:` selector"));
-        assert!(skill.contains("agent-spec parse"));
+        assert!(skill.contains("docwright parse"));
         assert!(skill.contains("Hard Syntax Rules"));
     }
 
     #[test]
     fn test_authoring_skill_includes_behavior_surface_checklist() {
         let skill =
-            fs::read_to_string(repo_root().join(".claude/skills/agent-spec-authoring/SKILL.md"))
+            fs::read_to_string(repo_root().join(".claude/skills/docwright-authoring/SKILL.md"))
                 .unwrap();
 
         assert!(skill.contains("Behavior Surface Checklist"));
@@ -4090,7 +4089,7 @@ Scenario: Contract alias
     #[test]
     fn test_tool_first_skill_mentions_unbound_observable_behavior_review_step() {
         let skill =
-            fs::read_to_string(repo_root().join(".claude/skills/agent-spec-tool-first/SKILL.md"))
+            fs::read_to_string(repo_root().join(".claude/skills/docwright-tool-first/SKILL.md"))
                 .unwrap();
 
         assert!(skill.contains("Unbound Observable Behavior review"));
@@ -4118,7 +4117,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_guard_collects_specs_from_multiple_dirs() {
-        let base = make_temp_dir("agent-spec-cli-multi-dir");
+        let base = make_temp_dir("docwright-cli-multi-dir");
         let dir_a = base.join("specs");
         let dir_b = base.join("docs-feature-x");
         fs::create_dir_all(&dir_a).unwrap();
@@ -4138,7 +4137,7 @@ Scenario: Contract alias
 
     #[test]
     fn test_plan_out_writes_rendered_output_to_file() {
-        let base = make_temp_dir("agent-spec-cli-plan-out");
+        let base = make_temp_dir("docwright-cli-plan-out");
         let rendered = "# Plan\n\ncontract + codebase + sketch\n";
         let out_path = base.join("docs/features/goal/plan.md");
 
@@ -4156,7 +4155,7 @@ Scenario: Contract alias
         assert!(readme.contains("Claude Code"));
         assert!(readme.contains(".claude/skills"));
         assert!(readme.contains("tool-first"));
-        assert!(readme.contains("agent-spec-tool-first"));
+        assert!(readme.contains("docwright-tool-first"));
     }
 
     #[test]
@@ -4185,7 +4184,7 @@ Preserve structured completion criteria in the default contract output.
 
 Scenario: Registration request stays structured
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_contract_output_preserves_step_tables_and_test_selectors
     Level: integration
     Test Double: fixture_fs
@@ -4204,7 +4203,7 @@ Scenario: Registration request stays structured
 
         assert!(output.contains("Scenario: Registration request stays structured"));
         assert!(output.contains("  Test:"));
-        assert!(output.contains("    Package: agent-spec"));
+        assert!(output.contains("    Package: docwright"));
         assert!(
             output.contains(
                 "    Filter: test_contract_output_preserves_step_tables_and_test_selectors"
@@ -4228,7 +4227,7 @@ name: "Verification Metadata"
 
 Scenario: verification metadata stays visible
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_contract_and_json_output_preserve_verification_metadata
     Level: integration
     Test Double: fixture_fs
@@ -4377,7 +4376,7 @@ Scenario: verification metadata stays visible
 
     #[test]
     fn test_lifecycle_writes_structured_run_log_summary() {
-        let dir = make_temp_dir("agent-spec-run-log");
+        let dir = make_temp_dir("docwright-run-log");
 
         let entry = RunLogEntry {
             spec_name: "test-contract".into(),
@@ -4388,7 +4387,7 @@ Scenario: verification metadata stays visible
         };
         super::write_run_log(&dir, &entry).unwrap();
 
-        let runs_dir = dir.join(".agent-spec/runs");
+        let runs_dir = dir.join(".docwright/runs");
         assert!(runs_dir.exists(), "runs directory should be created");
 
         let files: Vec<_> = fs::read_dir(&runs_dir)
@@ -4417,8 +4416,8 @@ Scenario: verification metadata stays visible
 
     #[test]
     fn test_explain_history_reads_run_log_summary() {
-        let dir = make_temp_dir("agent-spec-explain-history");
-        let runs_dir = dir.join(".agent-spec/runs");
+        let dir = make_temp_dir("docwright-explain-history");
+        let runs_dir = dir.join(".docwright/runs");
         fs::create_dir_all(&runs_dir).unwrap();
 
         // Write multiple run log entries
@@ -4467,7 +4466,7 @@ Scenario: verification metadata stays visible
         let jj_check = Command::new("jj").arg("version").output();
         if let Ok(output) = jj_check {
             if output.status.success() {
-                let repo = make_temp_dir("agent-spec-jj-test");
+                let repo = make_temp_dir("docwright-jj-test");
                 let init = Command::new("jj")
                     .arg("git")
                     .arg("init")
@@ -4502,7 +4501,7 @@ Scenario: verification metadata stays visible
         // Parse the Lifecycle command without --adversarial flag
         use clap::Parser;
         let cli = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "specs/project.spec",
             "--code",
@@ -4517,7 +4516,7 @@ Scenario: verification metadata stays visible
 
         // With --adversarial explicitly
         let cli2 = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "specs/project.spec",
             "--code",
@@ -4541,30 +4540,30 @@ Scenario: verification metadata stays visible
         // Codex integration
         let agents_md = fs::read_to_string(root.join("AGENTS.md")).unwrap();
         assert!(
-            agents_md.contains("agent-spec contract"),
+            agents_md.contains("docwright contract"),
             "AGENTS.md should reference contract command"
         );
         assert!(
-            agents_md.contains("agent-spec lifecycle"),
+            agents_md.contains("docwright lifecycle"),
             "AGENTS.md should reference lifecycle command"
         );
         assert!(
-            agents_md.contains("agent-spec guard"),
+            agents_md.contains("docwright guard"),
             "AGENTS.md should reference guard command"
         );
 
         // Cursor integration
         let cursorrules = fs::read_to_string(root.join(".cursorrules")).unwrap();
         assert!(
-            cursorrules.contains("agent-spec contract"),
+            cursorrules.contains("docwright contract"),
             ".cursorrules should reference contract command"
         );
 
         // Aider integration
         let aider = fs::read_to_string(root.join(".aider.conf.yml")).unwrap();
         assert!(
-            aider.contains("agent-spec"),
-            ".aider.conf.yml should reference agent-spec"
+            aider.contains("docwright"),
+            ".aider.conf.yml should reference docwright"
         );
     }
 
@@ -4572,7 +4571,7 @@ Scenario: verification metadata stays visible
     fn test_checkpoint_commands_are_optional_and_vcs_aware() {
         // Verify the checkpoint command parses correctly
         use clap::Parser;
-        let cli = super::Cli::parse_from(["agent-spec", "checkpoint", "status"]);
+        let cli = super::Cli::parse_from(["docwright", "checkpoint", "status"]);
         match cli.command {
             super::Commands::Checkpoint { action } => {
                 assert_eq!(action, "status");
@@ -4581,7 +4580,7 @@ Scenario: verification metadata stays visible
         }
 
         // Default action is "status"
-        let cli2 = super::Cli::parse_from(["agent-spec", "checkpoint"]);
+        let cli2 = super::Cli::parse_from(["docwright", "checkpoint"]);
         match cli2.command {
             super::Commands::Checkpoint { action } => {
                 assert_eq!(action, "status");
@@ -4591,7 +4590,7 @@ Scenario: verification metadata stays visible
 
         // Checkpoint is NOT injected into default lifecycle
         let cli3 = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "specs/project.spec",
             "--code",
@@ -4609,7 +4608,7 @@ Scenario: verification metadata stays visible
 
         // Without --layers: all layers run
         let cli = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "specs/project.spec",
             "--code",
@@ -4627,7 +4626,7 @@ Scenario: verification metadata stays visible
 
         // With --layers: only specified layers
         let cli2 = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "specs/project.spec",
             "--code",
@@ -4701,7 +4700,7 @@ Scenario: verification metadata stays visible
 
         // The command exists and parses
         let cli =
-            super::Cli::parse_from(["agent-spec", "measure-determinism", "specs/project.spec"]);
+            super::Cli::parse_from(["docwright", "measure-determinism", "specs/project.spec"]);
         match cli.command {
             super::Commands::MeasureDeterminism { spec, runs, .. } => {
                 assert!(spec.to_string_lossy().contains("project.spec"));
@@ -4834,8 +4833,8 @@ Scenario: verification metadata stays visible
 
     #[test]
     fn test_explain_history_shows_jj_diff_between_runs() {
-        let dir = make_temp_dir("agent-spec-jj-diff-history");
-        let runs_dir = dir.join(".agent-spec/runs");
+        let dir = make_temp_dir("docwright-jj-diff-history");
+        let runs_dir = dir.join(".docwright/runs");
         fs::create_dir_all(&runs_dir).unwrap();
 
         // Write two run log entries with jj operation IDs
@@ -4888,8 +4887,8 @@ Scenario: verification metadata stays visible
 
     #[test]
     fn test_explain_history_degrades_without_jj() {
-        let dir = make_temp_dir("agent-spec-no-jj-history");
-        let runs_dir = dir.join(".agent-spec/runs");
+        let dir = make_temp_dir("docwright-no-jj-history");
+        let runs_dir = dir.join(".docwright/runs");
         fs::create_dir_all(&runs_dir).unwrap();
 
         // Two entries with jj VCS but no actual jj available
@@ -4952,7 +4951,7 @@ Scenario: verification metadata stays visible
     fn test_resolve_ai_command_parses_correctly() {
         use clap::Parser;
         let cli = super::Cli::parse_from([
-            "agent-spec",
+            "docwright",
             "resolve-ai",
             "specs/task.spec",
             "--code",
@@ -5262,7 +5261,7 @@ Scenario: pass
     #[test]
     fn test_resume_without_run_log_dir_errors() {
         let cli = super::Cli::try_parse_from([
-            "agent-spec",
+            "docwright",
             "lifecycle",
             "dummy.spec",
             "--code",
@@ -5577,7 +5576,7 @@ Scenario: pass
     fn test_tool_first_reference_covers_all_subcommands() {
         use clap::CommandFactory as _;
         let reference = fs::read_to_string(
-            repo_root().join("skills/agent-spec-tool-first/references/commands.md"),
+            repo_root().join("skills/docwright-tool-first/references/commands.md"),
         )
         .unwrap();
         for sub in crate::Cli::command().get_subcommands() {
@@ -5595,7 +5594,7 @@ Scenario: pass
 
     #[test]
     fn test_sdd_skill_documents_five_flows() {
-        let sdd = fs::read_to_string(repo_root().join("skills/agent-spec-sdd/SKILL.md")).unwrap();
+        let sdd = fs::read_to_string(repo_root().join("skills/docwright-sdd/SKILL.md")).unwrap();
         for flow in [
             "Adoption",
             "Goal lifecycle",

@@ -14,7 +14,7 @@ fn temp_dir(label: &str) -> PathBuf {
         .expect("clock should be after epoch")
         .as_nanos();
     let dir = std::env::temp_dir().join(format!(
-        "agent-spec-e2e-{label}-{}-{nonce}",
+        "docwright-e2e-{label}-{}-{nonce}",
         std::process::id()
     ));
     fs::create_dir_all(&dir).expect("temporary directory should be created");
@@ -22,11 +22,11 @@ fn temp_dir(label: &str) -> PathBuf {
 }
 
 fn run(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_agent-spec"))
+    Command::new(env!("CARGO_BIN_EXE_docwright"))
         .current_dir(dir)
         .args(args)
         .output()
-        .expect("agent-spec process should start")
+        .expect("docwright process should start")
 }
 
 fn goal_spec(report_body: &str) -> String {

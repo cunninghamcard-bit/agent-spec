@@ -28,6 +28,6 @@ Thumbs.db
 .env
 .env.*
 
-# agent-spec run logs
-.agent-spec/
+# docwright run logs
+.docwright/
 books/harness-spec-ai/

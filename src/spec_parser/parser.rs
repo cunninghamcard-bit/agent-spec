@@ -1069,7 +1069,7 @@ name: "Verification metadata"
 
 Scenario: Structured verification strength
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_parse_scenario_verification_metadata_fields
     Level: integration
     Test Double: local_http_stub
@@ -1083,7 +1083,7 @@ Scenario: Structured verification strength
         match &doc.sections[0] {
             Section::AcceptanceCriteria { scenarios, .. } => {
                 let selector = scenarios[0].test_selector.as_ref().unwrap();
-                assert_eq!(selector.package.as_deref(), Some("agent-spec"));
+                assert_eq!(selector.package.as_deref(), Some("docwright"));
                 assert_eq!(
                     selector.filter,
                     "test_parse_scenario_verification_metadata_fields"
@@ -1111,7 +1111,7 @@ name: "verification metadata"
 
 Scenario: verification metadata
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_parse_english_verification_metadata_fields
     Level: integration
     Test Double: local_http_stub
@@ -1143,7 +1143,7 @@ name: "legacy selector"
 
 Scenario: legacy selector
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_existing_specs_without_verification_metadata_remain_valid
   Given a legacy spec
   When the parser reads it
@@ -1154,7 +1154,7 @@ Scenario: legacy selector
         match &doc.sections[0] {
             Section::AcceptanceCriteria { scenarios, .. } => {
                 let selector = scenarios[0].test_selector.as_ref().unwrap();
-                assert_eq!(selector.package.as_deref(), Some("agent-spec"));
+                assert_eq!(selector.package.as_deref(), Some("docwright"));
                 assert_eq!(
                     selector.filter,
                     "test_existing_specs_without_verification_metadata_remain_valid"

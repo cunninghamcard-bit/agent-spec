@@ -71,7 +71,7 @@ workflow but has no research or learning step.
 
 Scenario: research command scaffolds and refreshes
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_research_scaffolds_and_refreshes_e2e
     Level: e2e
     Test Double: none
@@ -84,7 +84,7 @@ Scenario: research command scaffolds and refreshes
 
 Scenario: unresolved markers without research are an error
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_lint_research_required_fires_on_unresolved_marker
   Given a spec containing a bracketed NEEDS-CLARIFICATION marker and no sibling research.md
   When lint runs
@@ -93,7 +93,7 @@ Scenario: unresolved markers without research are an error
 
 Scenario: research presence downgrades nothing else
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_lint_research_required_quiet_with_research_present
   Given the same spec with a sibling research.md
   When lint runs
@@ -102,7 +102,7 @@ Scenario: research presence downgrades nothing else
 
 Scenario: uncited research warns
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_lint_research_uncited_warns
   Given a sibling research.md and a spec whose Current State and Decisions never mention it
   When lint runs
@@ -110,7 +110,7 @@ Scenario: uncited research warns
 
 Scenario: unfilled research warns
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_lint_research_unfilled_warns
   Given a sibling research.md still containing template placeholders
   When lint runs
@@ -118,7 +118,7 @@ Scenario: unfilled research warns
 
 Scenario: integrate ships the research skill
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_integrate_installs_research_skill_e2e
     Level: e2e
     Test Double: none
@@ -129,7 +129,7 @@ Scenario: integrate ships the research skill
 
 Scenario: finish removes research consumables
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_removes_research_consumables_e2e
     Level: e2e
     Test Double: none

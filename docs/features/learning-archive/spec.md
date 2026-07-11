@@ -58,7 +58,7 @@ survive only in git history (commit 911d5da).
 
 Scenario: graduation archives the learning trail
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_archives_research_and_learning_e2e
     Level: e2e
     Test Double: none
@@ -71,7 +71,7 @@ Scenario: graduation archives the learning trail
 
 Scenario: archive collisions abort the graduation
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_refuses_archive_collision_e2e
     Level: e2e
     Test Double: none

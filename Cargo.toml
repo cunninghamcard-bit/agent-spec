@@ -1,11 +1,14 @@
 [package]
-name = "agent-spec"
+name = "docwright"
 description = "AI-native BDD/Spec verification tool for contract-driven agent coding"
 edition = "2024"
 version = "0.5.0"
 license = "MIT"
-repository = "https://github.com/ZhangHanDong/agent-spec"
-homepage = "https://github.com/ZhangHanDong/agent-spec"
+repository = "https://github.com/cunninghamcard-bit/agent-spec"
+homepage = "https://github.com/cunninghamcard-bit/agent-spec"
+readme = "README.md"
+keywords = ["bdd", "spec", "verification", "agent", "sdd"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 thiserror = "2"

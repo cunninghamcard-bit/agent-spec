@@ -14,7 +14,7 @@ use crate::spec_verify::{
 
 use super::TaskContract;
 
-/// The main entry point for agent-spec lifecycle integration.
+/// The main entry point for docwright lifecycle integration.
 pub struct SpecGateway {
     doc: crate::spec_core::SpecDocument,
     resolved: crate::spec_core::ResolvedSpec,
@@ -620,7 +620,7 @@ Scenario: Missing selector
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-gateway-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-gateway-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         fs::write(
@@ -684,7 +684,7 @@ Scenario: Happy path
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-gateway-full-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-gateway-full-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         fs::write(
@@ -1106,7 +1106,7 @@ Scenario: Requires AI judgment
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-gw-org-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-gw-org-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         fs::write(

@@ -70,7 +70,7 @@ agent-spec guard: 44 spec(s) passed
 
 Scenario: governed path changes without the document
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_doc_impact_warns_when_governed_path_changes
   Given a document governing "src/**" and a change set containing "src/lib.rs"
   When doc impact is checked
@@ -78,7 +78,7 @@ Scenario: governed path changes without the document
 
 Scenario: document updated together with the code stays quiet
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_doc_impact_quiet_when_doc_updated_together
   Given a governed document that is itself part of the change set
   When doc impact is checked
@@ -86,7 +86,7 @@ Scenario: document updated together with the code stays quiet
 
 Scenario: changes outside governed paths stay quiet
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_doc_impact_quiet_without_overlap
   Given a document governing "src/agent/**" and a change set touching only "docs/notes.md"
   When doc impact is checked
@@ -94,7 +94,7 @@ Scenario: changes outside governed paths stay quiet
 
 Scenario: governs markers parse from HTML comments
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_doc_impact_parses_governs_marker
   Given a Markdown file containing two governs marker lines and prose
   When markers are parsed
@@ -103,7 +103,7 @@ Scenario: governs markers parse from HTML comments
 
 Scenario: doc-impact warnings do not gate guard
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_guard_doc_impact_warns_without_failing_e2e
     Level: e2e
     Test Double: none

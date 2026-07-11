@@ -4,7 +4,7 @@
 //! invisible marker line:
 //!
 //! ```markdown
-//! <!-- agent-spec:governs: src/main.rs, skills/** -->
+//! <!-- docwright:governs: src/main.rs, skills/** -->
 //! ```
 //!
 //! During `guard`, changes under governed paths without a matching update
@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 
 use crate::spec_verify::path_matches_pattern;
 
-const GOVERNS_MARKER: &str = "<!-- agent-spec:governs:";
+const GOVERNS_MARKER: &str = "<!-- docwright:governs:";
 
 /// A maintained document and the code-path globs it governs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,11 +154,11 @@ mod tests {
         let content = "\
 # Architecture
 
-<!-- agent-spec:governs: src/agent/**, src/shared/contracts/** -->
+<!-- docwright:governs: src/agent/**, src/shared/contracts/** -->
 
 Some prose.
 
-<!-- agent-spec:governs: `src/main.rs` -->
+<!-- docwright:governs: `src/main.rs` -->
 ";
         assert_eq!(
             parse_governs_markers(content),
@@ -172,7 +172,7 @@ Some prose.
 # Doc
 
 ```markdown
-<!-- agent-spec:governs: src/example/** -->
+<!-- docwright:governs: src/example/** -->
 ```
 ";
         assert!(parse_governs_markers(fenced).is_empty());
@@ -212,18 +212,17 @@ Some prose.
 
     #[test]
     fn test_doc_impact_discovery_scans_root_and_docs() {
-        let dir =
-            std::env::temp_dir().join(format!("agent-spec-doc-impact-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("docwright-doc-impact-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("docs/deep")).unwrap();
         fs::write(
             dir.join("README.md"),
-            "<!-- agent-spec:governs: src/main.rs -->\n",
+            "<!-- docwright:governs: src/main.rs -->\n",
         )
         .unwrap();
         fs::write(
             dir.join("docs/deep/arch.md"),
-            "<!-- agent-spec:governs: src/agent/** -->\n",
+            "<!-- docwright:governs: src/agent/** -->\n",
         )
         .unwrap();
         fs::write(dir.join("docs/plain.md"), "no markers\n").unwrap();

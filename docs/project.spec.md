@@ -1,11 +1,11 @@
 spec: project
-name: "agent-spec 项目规则"
+name: "docwright 项目规则"
 tags: [bootstrap, project]
 ---
 
 ## Intent
 
-把 `agent-spec` 做成一个面向新时代 code review 的控制面工具：
+把 `docwright` 做成一个面向新时代 code review 的控制面工具：
 人用自然语言写 BDD/Spec，agent 依据 Spec 实现代码，机器依据 Spec 给出可追踪的验证结果。
 
 ## Constraints
@@ -22,7 +22,7 @@ tags: [bootstrap, project]
 - verify 与 lifecycle 应支持可选的 git change scope，同时保持默认行为稳定
 - AI verifier 的 `uncertain` 结果应附带结构化 `AiAnalysis` 证据
 - AI verifier 应通过可插拔 backend 接口产生结构化分析结果
-- agent-spec 应保持 provider-agnostic，由宿主 agent 注入 AI backend
+- docwright 应保持 provider-agnostic，由宿主 agent 注入 AI backend
 - 项目应提供 Claude Code 的 project-local skills，且主路径是 tool-first
 - 耐久能力规则经 `promote` 累积于 `docs/capabilities/`（真相层）；历史从 git 恢复，不设归档目录
 - Task Contract 应区分 `Must`、`Must Not` 与 `Decisions`
@@ -129,7 +129,7 @@ Scenario: 继承链保留项目级约束与已定决策
 Scenario: contract 输出保留结构化验收信息
   Test: test_contract_output_preserves_step_tables_and_test_selectors
   Given 某个场景带有 step table 与结构化 `测试:` selector
-  When CLI 渲染 `agent-spec contract`
+  When CLI 渲染 `docwright contract`
   Then 默认输出保留这些结构化信息
   And Agent 主路径不会丢失关键验收上下文
 

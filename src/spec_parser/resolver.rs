@@ -157,7 +157,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-resolver-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-resolver-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         let project_path = root.join("project.spec");
@@ -217,7 +217,7 @@ Scenario: Happy path
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-resolver-nested-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-resolver-nested-{stamp}"));
         let specs_dir = root.join("specs");
         let roadmap_dir = specs_dir.join("roadmap");
         fs::create_dir_all(&roadmap_dir).unwrap();
@@ -279,7 +279,7 @@ Scenario: Happy path
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-resolver-prefer-md-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-resolver-prefer-md-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         // Create both project.spec and project.spec.md with different constraints
@@ -319,7 +319,7 @@ Scenario: Happy path
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-resolver-fallback-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-resolver-fallback-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         // Only project.spec, no .spec.md
@@ -351,7 +351,7 @@ Scenario: Happy path
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent-spec-resolver-missing-{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright-resolver-missing-{stamp}"));
         fs::create_dir_all(&root).unwrap();
 
         // No project.spec or project.spec.md

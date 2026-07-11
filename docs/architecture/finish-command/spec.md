@@ -65,7 +65,7 @@ next: agent-spec promote --help (1 rule eligible)
 
 Scenario: finishing a green goal removes the consumables
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_removes_plan_and_tasks_e2e
     Level: e2e
     Test Double: none
@@ -78,7 +78,7 @@ Scenario: finishing a green goal removes the consumables
 
 Scenario: finishing a failing goal deletes nothing
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_refuses_on_failing_contract_e2e
     Level: e2e
     Test Double: none
@@ -90,7 +90,7 @@ Scenario: finishing a failing goal deletes nothing
 
 Scenario: retire removes the whole goal directory
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_retire_removes_goal_directory_e2e
     Level: e2e
     Test Double: none
@@ -101,7 +101,7 @@ Scenario: retire removes the whole goal directory
 
 Scenario: a bare spec finishes with nothing to clean
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_cli_finish_bare_spec_reports_nothing_to_clean_e2e
     Level: e2e
     Test Double: none

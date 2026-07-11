@@ -1,10 +1,36 @@
 # Changelog
 
-All notable changes to `agent-spec` are documented here. Format follows
+All notable changes to `docwright` (published as `agent-spec` through
+0.5.0; renamed for the crates.io publish — see below) are documented
+here. Format follows
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+### Changed (BREAKING) — Renamed to docwright
+
+- **The crate, binary, and CLI are renamed `agent-spec` → `docwright`.**
+  `agent-spec` is upstream ZhangHanDong's own actively-published crate
+  (confirmed via crates.io, not squattable per crates.io's own naming
+  policy); this fork had also diverged enough — Doc Impact Guard, the
+  single `docs/` household, Research and Learn, Learning Archive, the
+  capabilities library — that its differentiation is documentation
+  governance and learning capture, not spec-checking. `docwright` follows
+  the `-wright` craftsman-suffix pattern the sibling fork
+  `BUNotesAI/specwright` used for the identical name collision, and maps
+  directly onto the `docs/` household.
+- **Full-depth rename**, since there are no external adopters yet to
+  protect compatibility for: skill directories (`agent-spec-*` →
+  `docwright-*`, both `skills/` and `.claude/skills/`), the `.agent-spec/`
+  state directory → `.docwright/`, and the `agent-spec:*` marker prefix
+  (`governs`, `generated`, `integration`) → `docwright:*`.
+- `Cargo.toml`'s `repository`/`homepage` now point at this fork
+  (previously pointed at upstream — a pre-existing bug); added `readme`,
+  `keywords`, `categories` for crates.io discoverability.
+- Historical documents (retrospectives, comparison docs, `docs/learning/**`,
+  already-graduated goal contracts) are left untouched — they document
+  what shipped under the old name at the time.
 
 ### Changed — Learning Archive
 

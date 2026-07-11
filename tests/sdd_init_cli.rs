@@ -11,7 +11,7 @@ fn temp_dir(label: &str) -> PathBuf {
         .expect("clock should be after epoch")
         .as_nanos();
     let dir = std::env::temp_dir().join(format!(
-        "agent-spec-e2e-{label}-{}-{nonce}",
+        "docwright-e2e-{label}-{}-{nonce}",
         std::process::id()
     ));
     fs::create_dir_all(&dir).expect("temporary directory should be created");
@@ -19,11 +19,11 @@ fn temp_dir(label: &str) -> PathBuf {
 }
 
 fn run(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_agent-spec"))
+    Command::new(env!("CARGO_BIN_EXE_docwright"))
         .current_dir(dir)
         .args(args)
         .output()
-        .expect("agent-spec process should start")
+        .expect("docwright process should start")
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn test_cli_init_feature_creates_spec_only_e2e() {
     let parse = run(&dir, &["parse", goal.join("spec.md").to_str().unwrap()]);
     assert!(parse.status.success(), "{:?}", parse);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("next: agent-spec lint"));
+    assert!(stdout.contains("next: docwright lint"));
     let _ = fs::remove_dir_all(dir);
 }
 
@@ -162,18 +162,17 @@ fn test_cli_init_requires_kind_and_name_e2e() {
 }
 
 #[test]
-fn test_agent_spec_sdd_skill_routes_cli_workflow() {
+fn test_docwright_sdd_skill_routes_cli_workflow() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let sdd = fs::read_to_string(root.join("skills/agent-spec-sdd/SKILL.md")).unwrap();
+    let sdd = fs::read_to_string(root.join("skills/docwright-sdd/SKILL.md")).unwrap();
     let claude_sdd =
-        fs::read_to_string(root.join(".claude/skills/agent-spec-sdd/SKILL.md")).unwrap();
-    let tool_first =
-        fs::read_to_string(root.join("skills/agent-spec-tool-first/SKILL.md")).unwrap();
-    let authoring = fs::read_to_string(root.join("skills/agent-spec-authoring/SKILL.md")).unwrap();
+        fs::read_to_string(root.join(".claude/skills/docwright-sdd/SKILL.md")).unwrap();
+    let tool_first = fs::read_to_string(root.join("skills/docwright-tool-first/SKILL.md")).unwrap();
+    let authoring = fs::read_to_string(root.join("skills/docwright-authoring/SKILL.md")).unwrap();
 
     assert!(sdd.contains("deepchat-sdd"));
     assert_eq!(sdd, claude_sdd);
-    assert!(sdd.contains("agent-spec init --kind"));
+    assert!(sdd.contains("docwright init --kind"));
     assert!(sdd.contains("`spec.md` is the authoritative"));
     assert!(sdd.contains("E2E evidence"));
     assert!(sdd.contains("staged birth"));
@@ -194,7 +193,7 @@ fn test_agent_spec_sdd_skill_routes_cli_workflow() {
     );
     assert!(output.status.success(), "{:?}", output);
     let generated = fs::read_to_string(dir.join("AGENTS.md")).unwrap();
-    assert!(generated.contains("agent-spec init --kind"));
+    assert!(generated.contains("docwright init --kind"));
     assert!(!generated.contains("Presenter"));
     assert!(!generated.contains("GitHub-label"));
     let _ = fs::remove_dir_all(dir);

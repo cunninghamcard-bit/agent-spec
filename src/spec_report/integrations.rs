@@ -7,21 +7,21 @@
 /// The canonical tool-first integration instructions — the single source.
 pub fn integration_body() -> String {
     "\
-agent-spec is an AI-native BDD/spec verification tool. Use it tool-first:\n\
+docwright is an AI-native BDD/spec verification tool. Use it tool-first:\n\
 \n\
 1. For substantial new work without a contract, create the goal folder and its\n\
-   contract skeleton: `agent-spec init --kind feature|issue|architecture --name <goal>`.\n\
-2. Read the Task Contract: `agent-spec contract <spec>`.\n\
+   contract skeleton: `docwright init --kind feature|issue|architecture --name <goal>`.\n\
+2. Read the Task Contract: `docwright contract <spec>`.\n\
 3. Generate plan context (births plan.md and tasks.md beside the contract):\n\
-   `agent-spec plan <spec> --code . --out <goal>/plan.md`.\n\
+   `docwright plan <spec> --code . --out <goal>/plan.md`.\n\
 4. Implement within the contract's Boundaries.\n\
-5. Verify: `agent-spec lifecycle <spec> --code . --format json` — fix until all\n\
+5. Verify: `docwright lifecycle <spec> --code . --format json` — fix until all\n\
    scenarios pass (failed/skipped/uncertain all 0). Do not edit the spec to pass.\n\
-6. Repo-level gate before committing: `agent-spec guard --spec-dir docs --code .`.\n\
-7. Commit trailers come from the machine: `agent-spec stamp <spec> --code . --dry-run`.\n\
-8. Graduate: `agent-spec finish <spec> --code .`; lift durable Rules with\n\
-   `agent-spec promote` into `docs/capabilities/`.\n\
-9. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.\n\
+6. Repo-level gate before committing: `docwright guard --spec-dir docs --code .`.\n\
+7. Commit trailers come from the machine: `docwright stamp <spec> --code . --dry-run`.\n\
+8. Graduate: `docwright finish <spec> --code .`; lift durable Rules with\n\
+   `docwright promote` into `docs/capabilities/`.\n\
+9. Render the PR acceptance summary: `docwright explain <spec> --code . --format markdown`.\n\
 \n\
 The machine verifies whether the code satisfies the contract; you implement\n\
 against it, and a human reviews the contract."
@@ -54,7 +54,7 @@ impl IntegrationTarget {
         match self {
             Self::Agents => "AGENTS.md",
             Self::Cursor => ".cursorrules",
-            Self::Claude => "agent-spec-tool-first.md",
+            Self::Claude => "docwright-tool-first.md",
         }
     }
 }
@@ -63,14 +63,14 @@ impl IntegrationTarget {
 pub fn render_target(target: IntegrationTarget, body: &str) -> String {
     match target {
         IntegrationTarget::Agents => {
-            format!("# agent-spec — Agent Instructions\n\n{body}\n")
+            format!("# docwright — Agent Instructions\n\n{body}\n")
         }
         IntegrationTarget::Cursor => {
-            format!("# agent-spec rules (Cursor)\n\n{body}\n")
+            format!("# docwright rules (Cursor)\n\n{body}\n")
         }
         IntegrationTarget::Claude => {
             format!(
-                "---\nname: agent-spec-tool-first\ndescription: Use agent-spec as a CLI tool to verify code against Task Contracts.\n---\n\n{body}\n"
+                "---\nname: docwright-tool-first\ndescription: Use docwright as a CLI tool to verify code against Task Contracts.\n---\n\n{body}\n"
             )
         }
     }
@@ -89,8 +89,8 @@ pub fn has_drifted(existing: &str, rendered: &str) -> bool {
 
 // ── Target-project integration (the `integrate` command) ───────────────
 
-pub const INTEGRATION_START: &str = "<!-- agent-spec:integration:start -->";
-pub const INTEGRATION_END: &str = "<!-- agent-spec:integration:end -->";
+pub const INTEGRATION_START: &str = "<!-- docwright:integration:start -->";
+pub const INTEGRATION_END: &str = "<!-- docwright:integration:end -->";
 
 /// The managed policy block written into a target project's AGENTS.md and
 /// CLAUDE.md. Policy only: what applies, where artifacts live, what is
@@ -107,16 +107,16 @@ Each substantial goal lives in one kebab-case folder: docs/features/<goal>
 for new capabilities, docs/issues/<goal> for complex bugs, and
 docs/architecture/<goal> for refactors and cross-module design. The goal's
 spec.md is the authoritative contract — human-readable and mechanically
-verified by agent-spec. plan.md and tasks.md are execution materials and
+verified by docwright. plan.md and tasks.md are execution materials and
 never override it.
 
 Resolve every bracketed NEEDS-CLARIFICATION marker before implementation;
 the lint gate enforces this. Verified goals graduate: consumable artifacts
 are removed, durable rules are promoted, and history stays in git.
 
-The agent-spec-sdd skill owns goal classification and the workflow. Command
-usage lives in the agent-spec-tool-first skill; contract authoring guidance
-lives in the agent-spec-authoring skill.";
+The docwright-sdd skill owns goal classification and the workflow. Command
+usage lives in the docwright-tool-first skill; contract authoring guidance
+lives in the docwright-authoring skill.";
 
 /// Insert or refresh the managed block in a declaration file's content.
 /// Missing markers: append (preserving existing content). Present markers:
@@ -146,42 +146,42 @@ pub fn upsert_managed_block(existing: &str, block: &str) -> String {
 /// them into target projects without a network or source checkout.
 pub const EMBEDDED_SKILLS: &[(&str, &[(&str, &str)])] = &[
     (
-        "agent-spec-sdd",
+        "docwright-sdd",
         &[(
             "SKILL.md",
-            include_str!("../../skills/agent-spec-sdd/SKILL.md"),
+            include_str!("../../skills/docwright-sdd/SKILL.md"),
         )],
     ),
     (
-        "agent-spec-tool-first",
+        "docwright-tool-first",
         &[
             (
                 "SKILL.md",
-                include_str!("../../skills/agent-spec-tool-first/SKILL.md"),
+                include_str!("../../skills/docwright-tool-first/SKILL.md"),
             ),
             (
                 "references/commands.md",
-                include_str!("../../skills/agent-spec-tool-first/references/commands.md"),
+                include_str!("../../skills/docwright-tool-first/references/commands.md"),
             ),
         ],
     ),
     (
-        "agent-spec-research",
+        "docwright-research",
         &[(
             "SKILL.md",
-            include_str!("../../skills/agent-spec-research/SKILL.md"),
+            include_str!("../../skills/docwright-research/SKILL.md"),
         )],
     ),
     (
-        "agent-spec-authoring",
+        "docwright-authoring",
         &[
             (
                 "SKILL.md",
-                include_str!("../../skills/agent-spec-authoring/SKILL.md"),
+                include_str!("../../skills/docwright-authoring/SKILL.md"),
             ),
             (
                 "references/patterns.md",
-                include_str!("../../skills/agent-spec-authoring/references/patterns.md"),
+                include_str!("../../skills/docwright-authoring/references/patterns.md"),
             ),
         ],
     ),
@@ -201,11 +201,11 @@ mod tests {
         for line in POLICY_BLOCK.lines() {
             let t = line.trim();
             assert!(
-                !t.starts_with("agent-spec ") && !t.starts_with("$"),
+                !t.starts_with("docwright ") && !t.starts_with("$"),
                 "policy block must not invoke the CLI: {t}"
             );
         }
-        assert!(POLICY_BLOCK.contains("agent-spec-sdd skill"));
+        assert!(POLICY_BLOCK.contains("docwright-sdd skill"));
     }
 
     #[test]

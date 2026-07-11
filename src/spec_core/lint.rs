@@ -42,7 +42,7 @@ impl QualityScore {
 }
 
 /// Quality dimension a lint rule belongs to (Phase 5; Spec Kit /checklist's
-/// five dimensions adapted to agent-spec).
+/// five dimensions adapted to docwright).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Dimension {

@@ -42,7 +42,7 @@ structure).
 
 Scenario: hash comments inside fences are prose
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_parser_ignores_headers_inside_fences
   Given a spec whose UX Shape fence contains a line starting with "#"
   When the spec is parsed
@@ -51,7 +51,7 @@ Scenario: hash comments inside fences are prose
 
 Scenario: scenario keywords inside fences are inert
   Test:
-    Package: agent-spec
+    Package: docwright
     Filter: test_parser_ignores_scenario_keywords_inside_fences
   Given a completion criteria section whose fenced example contains a "Scenario:" line
   When the spec is parsed

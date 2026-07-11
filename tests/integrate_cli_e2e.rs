@@ -14,7 +14,7 @@ fn temp_dir(label: &str) -> PathBuf {
         .expect("clock should be after epoch")
         .as_nanos();
     let dir = std::env::temp_dir().join(format!(
-        "agent-spec-e2e-{label}-{}-{nonce}",
+        "docwright-e2e-{label}-{}-{nonce}",
         std::process::id()
     ));
     fs::create_dir_all(&dir).expect("temporary directory should be created");
@@ -22,11 +22,11 @@ fn temp_dir(label: &str) -> PathBuf {
 }
 
 fn run(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_agent-spec"))
+    Command::new(env!("CARGO_BIN_EXE_docwright"))
         .current_dir(dir)
         .args(args)
         .output()
-        .expect("agent-spec process should start")
+        .expect("docwright process should start")
 }
 
 #[test]
@@ -38,16 +38,16 @@ fn test_cli_integrate_installs_skills_e2e() {
 
     for root in [".agents/skills", ".claude/skills"] {
         for skill in [
-            "agent-spec-sdd",
-            "agent-spec-tool-first",
-            "agent-spec-authoring",
+            "docwright-sdd",
+            "docwright-tool-first",
+            "docwright-authoring",
         ] {
             let skill_md = dir.join(root).join(skill).join("SKILL.md");
             assert!(skill_md.is_file(), "missing {}", skill_md.display());
         }
         assert!(
             dir.join(root)
-                .join("agent-spec-tool-first/references/commands.md")
+                .join("docwright-tool-first/references/commands.md")
                 .is_file()
         );
     }
@@ -62,7 +62,7 @@ fn test_cli_integrate_installs_research_skill_e2e() {
     assert!(output.status.success(), "{:?}", output);
 
     for root in [".agents/skills", ".claude/skills"] {
-        let skill_md = dir.join(root).join("agent-spec-research/SKILL.md");
+        let skill_md = dir.join(root).join("docwright-research/SKILL.md");
         assert!(skill_md.is_file(), "missing {}", skill_md.display());
         let content = fs::read_to_string(&skill_md).unwrap();
         assert!(content.contains("primary sources"));
@@ -80,12 +80,12 @@ fn test_cli_integrate_writes_policy_blocks_e2e() {
     for declaration in ["AGENTS.md", "CLAUDE.md"] {
         let content = fs::read_to_string(dir.join(declaration)).unwrap();
         assert!(
-            content.contains("<!-- agent-spec:integration:start -->"),
+            content.contains("<!-- docwright:integration:start -->"),
             "{declaration}: {content}"
         );
-        assert!(content.contains("<!-- agent-spec:integration:end -->"));
+        assert!(content.contains("<!-- docwright:integration:end -->"));
         assert!(
-            content.contains("agent-spec-sdd skill owns goal classification"),
+            content.contains("docwright-sdd skill owns goal classification"),
             "{declaration} must name the workflow owner"
         );
     }
@@ -121,7 +121,7 @@ fn test_cli_integrate_preserves_and_refreshes_e2e() {
     assert!(content.contains("custom trailing note"));
     assert_eq!(
         content
-            .matches("<!-- agent-spec:integration:start -->")
+            .matches("<!-- docwright:integration:start -->")
             .count(),
         1,
         "exactly one managed block: {content}"
@@ -142,7 +142,7 @@ fn test_cli_init_prefills_vitest_binding_for_node_e2e() {
         spec.contains("test_command: pnpm vitest run"),
         "spec: {spec}"
     );
-    assert!(spec.contains("test_report: .agent-spec/report.xml"));
+    assert!(spec.contains("test_report: .docwright/report.xml"));
     // Binding sits in the frontmatter, before the separator.
     let frontmatter = spec.split("---").next().unwrap();
     assert!(frontmatter.contains("test_command"));

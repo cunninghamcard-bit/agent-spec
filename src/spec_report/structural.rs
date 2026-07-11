@@ -89,7 +89,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("agent_spec_struct_{stamp}"));
+        let root = std::env::temp_dir().join(format!("docwright_struct_{stamp}"));
         for (rel, content) in files {
             let p = root.join(rel);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();

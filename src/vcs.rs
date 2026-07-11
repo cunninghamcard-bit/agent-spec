@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_vcs_detect_prefers_jj_when_colocated() {
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-vcs-colocate-{}",
+            "docwright-vcs-colocate-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_vcs_detect_returns_git_when_only_git() {
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-vcs-git-{}",
+            "docwright-vcs-git-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn test_vcs_detect_returns_none_outside_repo() {
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-vcs-none-{}",
+            "docwright-vcs-none-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -205,7 +205,7 @@ mod tests {
         }
 
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-vcs-jj-ctx-{}",
+            "docwright-vcs-jj-ctx-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_vcs_context_returns_git_hash() {
         let dir = std::env::temp_dir().join(format!(
-            "agent-spec-vcs-git-ctx-{}",
+            "docwright-vcs-git-ctx-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

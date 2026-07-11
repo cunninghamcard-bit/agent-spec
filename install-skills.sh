@@ -4,21 +4,21 @@ set -euo pipefail
 SKILL_DIR="${HOME}/.claude/skills"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== agent-spec skills installer ==="
+echo "=== docwright skills installer ==="
 echo
 
 # Step 1: Install CLI
-if command -v agent-spec &>/dev/null; then
-  CURRENT=$(agent-spec --version 2>/dev/null || echo "unknown")
-  echo "[ok] agent-spec CLI already installed: ${CURRENT}"
+if command -v docwright &>/dev/null; then
+  CURRENT=$(docwright --version 2>/dev/null || echo "unknown")
+  echo "[ok] docwright CLI already installed: ${CURRENT}"
 else
-  echo "[..] Installing agent-spec CLI via cargo..."
+  echo "[..] Installing docwright CLI via cargo..."
   if command -v cargo &>/dev/null; then
-    cargo install agent-spec
-    echo "[ok] agent-spec CLI installed"
+    cargo install docwright
+    echo "[ok] docwright CLI installed"
   else
     echo "[!!] cargo not found. Install Rust first: https://rustup.rs"
-    echo "     Then run: cargo install agent-spec"
+    echo "     Then run: cargo install docwright"
     exit 1
   fi
 fi
@@ -28,7 +28,7 @@ echo
 # Step 2: Install skills
 mkdir -p "${SKILL_DIR}"
 
-for skill in agent-spec-sdd agent-spec-research agent-spec-tool-first agent-spec-authoring agent-spec-estimate; do
+for skill in docwright-sdd docwright-research docwright-tool-first docwright-authoring docwright-estimate; do
   SRC="${SCRIPT_DIR}/skills/${skill}"
   DST="${SKILL_DIR}/${skill}"
 
@@ -44,5 +44,5 @@ for skill in agent-spec-sdd agent-spec-research agent-spec-tool-first agent-spec
 done
 
 echo
-echo "Done. All agent-spec skills are ready for Claude Code."
-echo "Verify with: ls ~/.claude/skills/agent-spec-*"
+echo "Done. All docwright skills are ready for Claude Code."
+echo "Verify with: ls ~/.claude/skills/docwright-*"
