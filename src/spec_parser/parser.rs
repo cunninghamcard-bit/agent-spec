@@ -119,8 +119,22 @@ fn parse_body(lines: &[&str], offset: usize, rule_scope: &RuleScope) -> SpecResu
     let mut current_section: Option<(SectionKind, usize)> = None; // (kind, start_line)
     let mut section_lines: Vec<(usize, &str)> = Vec::new(); // (absolute_line, text)
 
+    let mut in_fence = false;
     for (i, &line) in lines.iter().enumerate() {
         let abs_line = offset + i + 1; // 1-indexed
+
+        // Fenced code blocks are prose: nothing inside them is structural.
+        let fence_delimiter = {
+            let t = line.trim_start();
+            t.starts_with("```") || t.starts_with("~~~")
+        };
+        if fence_delimiter {
+            in_fence = !in_fence;
+        }
+        if (in_fence || fence_delimiter) && current_section.is_some() {
+            section_lines.push((abs_line, line));
+            continue;
+        }
 
         if let Some(kind) = match_section_header(line) {
             // Flush previous section
@@ -397,7 +411,22 @@ fn parse_scenarios(lines: &[(usize, &str)], rule_scope: &RuleScope) -> SpecResul
         }};
     }
 
+    let mut in_fence = false;
     for &(line_num, line) in lines {
+        // Fenced code blocks inside the criteria section are documentation
+        // examples: keywords in them are inert.
+        let fence_delimiter = {
+            let t = line.trim_start();
+            t.starts_with("```") || t.starts_with("~~~")
+        };
+        if fence_delimiter {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+
         if let Some(raw) = match_rule_header(line) {
             // A `Rule:` header closes any in-progress scenario (so stray steps
             // after the header do not leak into the prior scenario across the
@@ -1910,6 +1939,35 @@ Scenario: Default auto review
 
     fn parse_err_msg(input: &str) -> String {
         parse_spec_from_str(input).unwrap_err().to_string()
+    }
+
+    #[test]
+    fn test_parser_ignores_headers_inside_fences() {
+        let spec = "spec: task\nname: \"fence\"\n---\n\n## Intent\n\nA thing.\n\n## UX Shape\n\n```text\n# not a header\n$ some command\n```\n\n## Completion Criteria\n\nScenario: ok\n  Test: test_ok\n  Given a thing\n  When it runs\n  Then it passes\n";
+        let doc = parse_spec_from_str(spec).unwrap();
+        let ux = doc.sections.iter().find_map(|s| match s {
+            Section::UxShape { content, .. } => Some(content.clone()),
+            _ => None,
+        });
+        let content = ux.unwrap();
+        assert!(content.contains("# not a header"), "got: {content}");
+    }
+
+    #[test]
+    fn test_parser_ignores_scenario_keywords_inside_fences() {
+        let spec = "spec: task\nname: \"fence\"\n---\n\n## Intent\n\nA thing.\n\n## Completion Criteria\n\nScenario: real one\n  Test: test_ok\n  Given a thing\n  When it runs\n  Then it passes\n\n```text\nScenario: fake one inside a fence\n  Test: test_fake\n```\n";
+        let doc = parse_spec_from_str(spec).unwrap();
+        let scenarios: Vec<String> = doc
+            .sections
+            .iter()
+            .flat_map(|s| match s {
+                Section::AcceptanceCriteria { scenarios, .. } => {
+                    scenarios.iter().map(|sc| sc.name.clone()).collect()
+                }
+                _ => Vec::new(),
+            })
+            .collect();
+        assert_eq!(scenarios, vec!["real one".to_string()]);
     }
 
     #[test]
