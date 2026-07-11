@@ -6,6 +6,13 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed — Learning Archive
+
+- **`finish` archives the learning trail instead of deleting it.**
+  research.md and learning-records/ migrate to `docs/learning/<goal>/`
+  at graduation (collisions abort before anything moves); plan.md and
+  tasks.md remain deleted consumables.
+
 ### Changed (BREAKING) — Workflow Refactor (0.5.0)
 
 - **Staged artifact birth.** `init --kind` creates the goal folder and

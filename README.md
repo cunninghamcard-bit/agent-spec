@@ -358,7 +358,7 @@ agent-spec finish docs/features/my-goal/spec.md --code .
 Rules of thumb:
 
 - **Skip SDD for trivial work.** Style fixes, copy changes, and small localized logic edits do not need a contract; prefer skipping over creating a token artifact.
-- **Graduate completed work.** `agent-spec finish` removes the consumables and keeps the contract; `agent-spec promote` lifts durable rules into `docs/capabilities/` (the truth layer). History lives in git, never in archive directories.
+- **Graduate completed work.** `agent-spec finish` removes plan.md/tasks.md, archives research.md and learning records into `docs/learning/<goal>/` (the decision-archaeology layer), and keeps the contract; `agent-spec promote` lifts durable rules into `docs/capabilities/` (the truth layer).
 
 ## The Five Flows
 
@@ -373,7 +373,7 @@ Every subcommand has a station in one of five flows (run `agent-spec --help` for
 Two invariants govern the flows:
 
 - **One active goal per worktree.** Parallel goals trip each other's boundary checks; `lifecycle` warns when more than one goal folder carries uncommitted changes.
-- **Single household.** Contracts live in `docs/features|issues|architecture/<goal>/`; durable rules accumulate in `docs/capabilities/` via `promote`; history lives in git.
+- **Single household.** Contracts live in `docs/features|issues|architecture/<goal>/`; durable rules accumulate in `docs/capabilities/` via `promote`; the learning trail is archived in `docs/learning/<goal>/`; history lives in git.
 
 ## Boundaries And Change Sets
 

@@ -35,7 +35,7 @@ workflow but has no research or learning step.
 - Enforcement is hard at the trigger (research.md F5, user override): a new error-level lint `research-required` fires when a spec contains an unresolved bracketed NEEDS-CLARIFICATION marker and no sibling research.md exists, directing the author to the research command
 - When research.md exists, two warning-level lints keep it honest: `research-uncited` when the spec's Current State and Decisions never mention research.md, and `research-unfilled` when research.md still contains template placeholders
 - `integrate` embeds and installs the new skill alongside the existing three
-- `finish` treats research.md and learning-records/ as consumables, removed at graduation like plan.md and tasks.md
+- `finish` archives research.md and learning-records/ into docs/learning/<goal>/ at graduation (amended by the learning-archive goal); plan.md and tasks.md stay consumable
 - The agent-spec-sdd skill's workflow gains the research and grill steps, delegating methodology to agent-spec-research
 - Skills are linked, not siloed (the Pocock composition model): agent-spec-sdd invokes agent-spec-research by name at its research step, agent-spec-authoring points grilled decisions into the Decisions section, agent-spec-tool-first documents the research command and defers methodology to agent-spec-research
 - Learning records are written the moment each grill round is confirmed, not batched at the end

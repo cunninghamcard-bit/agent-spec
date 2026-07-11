@@ -1692,20 +1692,66 @@ fn cmd_finish(
         return Ok(());
     }
 
-    let mut removed = 0;
-    for name in ["plan.md", "tasks.md", "research.md"] {
+    // The learning trail is archived, not deleted (learning-archive
+    // contract): research.md and learning-records/ migrate into
+    // docs/learning/<goal>/, the household's decision-archaeology layer.
+    let research = parent.join("research.md");
+    let learning_records = parent.join("learning-records");
+    let has_trail = research.is_file() || learning_records.is_dir();
+    if has_trail {
+        let docs_root = spec
+            .ancestors()
+            .find(|a| a.file_name().is_some_and(|n| n == "docs"))
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| code.join("docs"));
+        let goal_name = parent
+            .file_name()
+            .ok_or("goal directory has no name")?
+            .to_string_lossy()
+            .into_owned();
+        let archive = docs_root.join("learning").join(&goal_name);
+
+        // Refuse collisions before moving anything.
+        let mut moves: Vec<(PathBuf, PathBuf)> = Vec::new();
+        if research.is_file() {
+            moves.push((research.clone(), archive.join("research.md")));
+        }
+        if learning_records.is_dir() {
+            for entry in std::fs::read_dir(&learning_records)? {
+                let from = entry?.path();
+                let Some(file_name) = from.file_name().map(std::ffi::OsStr::to_os_string) else {
+                    continue;
+                };
+                moves.push((from, archive.join(file_name)));
+            }
+        }
+        for (_, to) in &moves {
+            if to.exists() {
+                return Err(format!(
+                    "finish aborted, nothing moved: archive collision at {}",
+                    to.display()
+                )
+                .into());
+            }
+        }
+        std::fs::create_dir_all(&archive)?;
+        for (from, to) in &moves {
+            std::fs::rename(from, to)?;
+        }
+        if learning_records.is_dir() {
+            std::fs::remove_dir_all(&learning_records)?;
+        }
+        println!("archived learning trail to {}/", archive.display());
+    }
+
+    let mut removed = if has_trail { 1 } else { 0 };
+    for name in ["plan.md", "tasks.md"] {
         let artifact = parent.join(name);
         if artifact.is_file() {
             std::fs::remove_file(&artifact)?;
             println!("removed {}", artifact.display());
             removed += 1;
         }
-    }
-    let learning_records = parent.join("learning-records");
-    if learning_records.is_dir() {
-        std::fs::remove_dir_all(&learning_records)?;
-        println!("removed {}/", learning_records.display());
-        removed += 1;
     }
     if removed == 0 {
         println!("no goal artifacts needed cleanup");

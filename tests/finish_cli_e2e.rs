@@ -106,8 +106,8 @@ fn test_cli_finish_removes_plan_and_tasks_e2e() {
 }
 
 #[test]
-fn test_cli_finish_removes_research_consumables_e2e() {
-    let dir = temp_dir("finish-research");
+fn test_cli_finish_archives_research_and_learning_e2e() {
+    let dir = temp_dir("finish-archive");
     let goal = write_goal_package(&dir, PASSING_REPORT);
     fs::write(goal.join("research.md"), "# R\n").unwrap();
     fs::create_dir_all(goal.join("learning-records")).unwrap();
@@ -124,12 +124,58 @@ fn test_cli_finish_removes_research_consumables_e2e() {
     );
 
     assert!(output.status.success(), "{:?}", output);
-    assert!(!goal.join("research.md").exists(), "research.md must go");
+    // The learning trail is archived into the household, not deleted.
+    let archive = dir.join("docs/learning/registration");
+    assert_eq!(
+        fs::read_to_string(archive.join("research.md")).unwrap(),
+        "# R\n"
+    );
+    assert_eq!(
+        fs::read_to_string(archive.join("0001-trigger.md")).unwrap(),
+        "# LR\n"
+    );
+    assert!(!goal.join("research.md").exists(), "research.md must move");
     assert!(
         !goal.join("learning-records").exists(),
-        "learning-records must go"
+        "learning-records must move"
     );
+    assert!(!goal.join("plan.md").exists(), "plan.md stays consumable");
+    assert!(!goal.join("tasks.md").exists(), "tasks.md stays consumable");
     assert!(goal.join("spec.md").exists());
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn test_cli_finish_refuses_archive_collision_e2e() {
+    let dir = temp_dir("finish-collision");
+    let goal = write_goal_package(&dir, PASSING_REPORT);
+    fs::write(goal.join("research.md"), "# new research\n").unwrap();
+    let archive = dir.join("docs/learning/registration");
+    fs::create_dir_all(&archive).unwrap();
+    fs::write(archive.join("research.md"), "# already archived\n").unwrap();
+
+    let output = run(
+        &dir,
+        &[
+            "finish",
+            "docs/features/registration/spec.md",
+            "--code",
+            ".",
+        ],
+    );
+
+    assert!(!output.status.success(), "{:?}", output);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("archive collision"), "stderr: {stderr}");
+    // Nothing moved, nothing lost.
+    assert_eq!(
+        fs::read_to_string(goal.join("research.md")).unwrap(),
+        "# new research\n"
+    );
+    assert_eq!(
+        fs::read_to_string(archive.join("research.md")).unwrap(),
+        "# already archived\n"
+    );
     let _ = fs::remove_dir_all(dir);
 }
 

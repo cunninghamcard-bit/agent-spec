@@ -39,7 +39,7 @@ next: agent-spec promote --help (1 rule eligible)
 - The contract is kept by default; `--retire` removes the whole goal directory when its criteria no longer define a maintained contract
 - When the verified spec declares behavior Rules, finish prints a promote hint naming the eligible rule count
 - A goal spec without plan/tasks artifacts finishes cleanly and reports that nothing needed cleanup
-- History is git's job: finish never writes archives
+- History is git's job for deleted consumables; the learning trail is the exception: research.md and learning-records/ are archived to docs/learning/<goal>/ at graduation (amended by the learning-archive goal)
 
 ## Boundaries
 

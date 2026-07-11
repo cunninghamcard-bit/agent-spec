@@ -33,8 +33,9 @@ has a station in one of five flows; this skill owns the map.
   folders. Finish or commit one goal before starting the next.
 - **Single household.** Contracts live in
   `docs/features|issues|architecture/<goal>/`; durable capability rules
-  accumulate in `docs/capabilities/` via promote. Long-term history is
-  recovered from git, never from archive directories.
+  accumulate in `docs/capabilities/` via promote; the learning trail is
+  archived in `docs/learning/<goal>/` at graduation. Everything else
+  that dies is recovered from git, not from archive directories.
 
 ## Classify And Initialize
 
@@ -80,8 +81,9 @@ Resolve every open question and clarification marker before implementation. Pref
 10. Commit with machine-verified trailers: run
     `agent-spec stamp <goal>/spec.md --code . --dry-run` and paste its
     output into the commit message. Never hand-write Spec-* trailers.
-11. Graduate: `agent-spec finish <goal>/spec.md --code .` removes the
-    consumables and keeps the contract.
+11. Graduate: `agent-spec finish <goal>/spec.md --code .` removes plan.md
+    and tasks.md, archives research.md and learning-records/ into
+    `docs/learning/<goal>/`, and keeps the contract.
 12. Promote durable Rules into the truth layer:
     `agent-spec promote <goal>/spec.md --rule <id> --to <capability>
     --code .` writes to `docs/capabilities/<capability>.spec.md`.

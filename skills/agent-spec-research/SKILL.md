@@ -60,5 +60,6 @@ that cost cannot be delegated. After research.md is complete:
 - `agent-spec-authoring` consumes grilled decisions into the Decisions
   section; cite research.md so the `research-uncited` lint stays quiet.
 - `agent-spec-tool-first` documents the `research` command surface.
-- At graduation, `finish` removes research.md and learning-records/ as
-  consumables; durable conclusions must already live in the contract.
+- At graduation, `finish` archives research.md and learning-records/ into
+  `docs/learning/<goal>/` — the household's decision-archaeology layer;
+  durable conclusions must still live in the contract itself.
