@@ -221,7 +221,7 @@ The run fails if:
 cargo run -q --bin agent-spec -- guard --spec-dir specs --code .
 ```
 
-`guard` is intended for pre-commit / CI use. It collects every contract in the `docs/` household (goal `spec.md` files, `docs/capabilities/`, and the project constitution) and verifies them against the current change set.
+`guard` is intended for pre-commit / CI use. It collects every contract in the `docs/` household (goal `spec.md` files and the project constitution) and verifies them against the current change set. Capability specs in `docs/capabilities/` are collected but exempt from the task gates — their Rules were proven by task Examples at promote time.
 
 Boundary checks run in **forbidden-only** mode under `guard`: `Forbidden` entries from every spec are enforced repo-wide, while `Allowed Changes` coverage is task-scoped and only gates single-spec `verify`/`lifecycle` runs.
 

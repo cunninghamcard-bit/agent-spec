@@ -1873,6 +1873,13 @@ fn cmd_guard(
             }
         };
 
+        // Capability specs are rule accumulators: their Rules were proven
+        // by task Examples at promote time, so guard's task gates do not
+        // apply to them.
+        if gw.resolved().task.meta.level == crate::spec_core::SpecLevel::Capability {
+            continue;
+        }
+
         // Lint check
         if let Err(failure) = gw.quality_gate(min_score) {
             errors.push(format!("{}: {}", spec_file.display(), failure,));

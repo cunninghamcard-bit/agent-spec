@@ -306,3 +306,42 @@ fn test_cli_lifecycle_warns_on_multiple_dirty_goals_e2e() {
     );
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn test_cli_guard_skips_capability_specs_e2e() {
+    let dir = temp_dir("guard-capability");
+    git(&dir, &["init", "-q"]);
+    fs::create_dir_all(dir.join("src")).unwrap();
+    let goal_dir = dir.join("docs/features/alpha");
+    fs::create_dir_all(&goal_dir).unwrap();
+    fs::write(goal_dir.join("spec.md"), passing_goal_spec("alpha")).unwrap();
+    // A bare promoted capability: rules without scenarios. Guard's task
+    // gates (quality score, verification) must not apply to it.
+    fs::create_dir_all(dir.join("docs/capabilities")).unwrap();
+    fs::write(
+        dir.join("docs/capabilities/core.spec.md"),
+        r#"spec: capability
+name: "core"
+tags: [capability]
+---
+
+## Intent
+
+Long-lived behavior truth library for the core capability.
+
+## Completion Criteria
+
+### Rule: r-status — status is deterministic
+"#,
+    )
+    .unwrap();
+
+    let output = run(
+        &dir,
+        &["guard", "--code", ".", "--change-scope", "worktree"],
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stdout} {stderr}");
+    let _ = fs::remove_dir_all(dir);
+}
