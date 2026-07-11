@@ -52,6 +52,7 @@ Humans define "what is correct" (Contract). Machines verify "is the code correct
 | `agent-spec contract <spec>` | Render Task Contract | Before coding - read the execution plan |
 | `agent-spec plan <spec> --code .` | Generate plan context | Before coding - codebase scan + task sketch |
 | `agent-spec lint <files>` | Spec quality check | After writing spec, before giving to Agent |
+| `agent-spec research <spec> --code .` | Scaffold/refresh goal research.md | Clarification markers unresolvable from code (methodology: agent-spec-research skill) |
 | `agent-spec lifecycle <spec> --code .` | Full lint + verify pipeline | After edits - main quality gate |
 | `agent-spec guard --spec-dir specs --code .` | Repo-wide check | Pre-commit / CI - all specs at once |
 | `agent-spec explain <spec> --format markdown` | PR-ready review summary | Contract Acceptance - paste into PR |

@@ -32,10 +32,11 @@ Resolve every open question and clarification marker before implementation. Pref
 1. Inspect the current code and maintained documentation.
 2. Decide whether SDD is warranted and classify the goal.
 3. Run the matching `agent-spec init --kind` command.
-4. Author and review `spec.md`; run `agent-spec parse`, `lint`, and `contract`.
-5. Refine `plan.md`, then keep `tasks.md` linked to the contract as work lands.
-6. Implement within Boundaries without weakening the spec to pass.
-7. Run `agent-spec lifecycle <goal>/spec.md --code .` until every Scenario passes.
-8. Run the relevant repo-level `agent-spec guard` before handoff.
+4. Research and learn when triggered (see the `agent-spec-research` skill): if a clarification marker cannot be resolved from the codebase or the domain is unfamiliar, run `agent-spec research <goal>/spec.md --code .`, investigate against primary sources, then grill the user decision-by-decision, writing a learning record per confirmed round. Do not author the contract before the grill completes.
+5. Author and review `spec.md`; run `agent-spec parse`, `lint`, and `contract`.
+6. Refine `plan.md`, then keep `tasks.md` linked to the contract as work lands.
+7. Implement within Boundaries without weakening the spec to pass.
+8. Run `agent-spec lifecycle <goal>/spec.md --code .` until every Scenario passes.
+9. Run the relevant repo-level `agent-spec guard` before handoff.
 
 Completion governance will be handled by the future `agent-spec finish` CLI workflow; do not create a separate cleanup skill or invent manual graduation rules here.

@@ -43,20 +43,44 @@ derived_into: spec.md
 ## Current Codebase State
 
 <!-- agent-spec:generated:start -->
-Manually surveyed this round (the `research` command that will own this
-region does not exist yet):
+Files (27):
+- .claude/skills/agent-spec-authoring/SKILL.md
+- .claude/skills/agent-spec-authoring/references/patterns.md
+- .claude/skills/agent-spec-research/SKILL.md
+- .claude/skills/agent-spec-sdd/SKILL.md
+- .claude/skills/agent-spec-tool-first/SKILL.md
+- .claude/skills/agent-spec-tool-first/references/commands.md
+- docs/features/research-and-learn/plan.md
+- docs/features/research-and-learn/research.md
+- docs/features/research-and-learn/spec.md
+- docs/features/research-and-learn/tasks.md
+- skills/agent-spec-authoring/SKILL.md
+- skills/agent-spec-authoring/references/patterns.md
+- skills/agent-spec-estimate/SKILL.md
+- skills/agent-spec-estimate/references/examples.md
+- skills/agent-spec-research/SKILL.md
+- skills/agent-spec-sdd/SKILL.md
+- skills/agent-spec-tool-first/SKILL.md
+- skills/agent-spec-tool-first/references/commands.md
+- src/spec_lint/linters.rs — pub struct VagueVerbLinter;
+- src/spec_lint/mod.rs
+- src/spec_lint/pipeline.rs — pub trait SpecLinter: Send + Sync {
+- tests/doc_impact_guard_e2e.rs — Black-box E2E for the Doc Impact Guard: warnings surface on stderr and
+- tests/finish_cli_e2e.rs — Black-box E2E for `finish`: graduation removes consumables only after the
+- tests/integrate_cli_e2e.rs — Black-box E2E for `integrate`: skills for both agent systems, managed
+- tests/repo_specs_english_only.rs — Regression guard: the repo's own spec corpus must use English structural
+- tests/research_cli_e2e.rs — Black-box E2E for `research`: scaffold on first run, refresh only the
+- tests/sdd_init_cli.rs
 
-- `[NEEDS CLARIFICATION]` gate: needs-clarification lint is error-level and
-  source-scanning (src/spec_lint/linters.rs); adopted from spec-kit per
-  docs/comparison-openspec-speckit.md line 554.
-- Goal packages: init --kind scaffolds spec/plan/tasks (src/main.rs,
-  generate_sdd_* fns); finish removes consumables; guard multi-dir.
-- Codebase scanning already exists: plan command's build_plan_context
-  (src/spec_gateway/plan.rs) produces file summaries, pub APIs, existing
-  tests from Allowed Changes paths.
-- Managed-region precedent: integrate's AGENTS.md/CLAUDE.md markers;
-  doc_impact's governs markers ignore fenced examples.
-- agent-spec-sdd skill owns the workflow; no research or grill step today.
+Test functions (8):
+- src/spec_lint/linters.rs: test_lint_research_required_fires_on_unresolved_marker, test_lint_research_required_quiet_with_research_present, test_lint_research_uncited_warns, test_lint_research_unfilled_warns, test_lint_needs_clarification_marker_is_error, test_lint_needs_clarification_scans_comments_and_front_matter, test_lint_needs_clarification_ignores_documented_marker_examples, test_lint_open_questions_items_warn, test_lint_resolved_questions_none_is_quiet, test_vague_verb_linter, test_unquantified_linter, test_testability_linter, test_determinism_linter, test_full_pipeline, test_explicit_test_binding_linter_requires_task_scenario_selectors, test_sycophancy_linter_flags_bug_finding_bias, test_quality_report_scores_testability_and_smells, test_cross_check_reports_boundary_and_decision_conflicts, test_explicit_test_binding_linter_accepts_explicit_selector, test_scenario_presence_linter_requires_acceptance_criteria, test_decision_coverage_warns_on_uncovered_decision, test_decision_coverage_passes_when_all_covered, test_observable_decision_coverage_warns_when_behavioral_decisions_lack_scenarios, test_output_mode_coverage_warns_when_json_or_output_flags_are_uncovered, test_precedence_fallback_coverage_warns_when_ordered_behavior_has_no_scenario, test_external_io_error_strength_warns_on_weak_mock_only_http_scenarios, test_behavior_completeness_linters_do_not_flag_plain_implementation_choices, test_lint_suggests_verification_metadata_for_external_io_scenarios, test_error_path_warns_on_all_happy_paths, test_error_path_passes_with_error_scenario, test_error_path_detects_english_error_indicators, test_universal_claim_warns_single_scenario_for_all_entry_points, test_universal_claim_passes_with_multiple_scenarios, test_universal_claim_ignores_non_universal_decisions, test_boundary_entry_point_warns_uncovered_entry, test_boundary_entry_point_passes_all_covered, test_boundary_entry_point_ignores_single_entry, test_flag_combination_warns_when_multiple_flags_but_no_combo_scenario, test_flag_combination_passes_when_combo_scenario_exists, test_flag_combination_ignores_single_flag_specs, test_platform_tag_warns_on_untagged_npm_reference, test_platform_tag_passes_when_tagged, test_platform_tag_ignores_non_platform_decisions, test_scenario_presence_linter_rejects_empty_acceptance_criteria, test_lint_detects_circular_dependency, test_lint_no_circular_dependency_for_linear_chain, test_freeform_rule_emits_warning_and_does_not_group_scenarios, test_bdd_rule_grouping_suggests_when_three_or_more_scenarios_uncategorized, test_bdd_rule_grouping_warns_on_empty_rule, test_bdd_scenario_shape_flags_missing_when_or_then, test_bdd_scenario_shape_flags_leading_and_or_but, test_bdd_implementation_detail_flags_ui_verbs_en_and_zh, test_open_question_warns, test_resolved_question_not_warned, test_open_question_is_non_gating, test_new_bdd_lints_emit_self_correction_guidance
+- src/spec_lint/pipeline.rs: test_lint_ack_moves_warning_to_acknowledged, test_lint_ack_leaves_other_diagnostics, test_lint_ack_cannot_suppress_error, test_ack_does_not_change_gating
+- tests/doc_impact_guard_e2e.rs: test_cli_guard_doc_impact_warns_without_failing_e2e
+- tests/finish_cli_e2e.rs: test_cli_finish_removes_plan_and_tasks_e2e, test_cli_finish_removes_research_consumables_e2e, test_cli_finish_refuses_on_failing_contract_e2e, test_cli_finish_retire_removes_goal_directory_e2e, test_cli_finish_bare_spec_reports_nothing_to_clean_e2e
+- tests/integrate_cli_e2e.rs: test_cli_integrate_installs_skills_e2e, test_cli_integrate_installs_research_skill_e2e, test_cli_integrate_writes_policy_blocks_e2e, test_cli_integrate_preserves_and_refreshes_e2e, test_cli_init_prefills_vitest_binding_for_node_e2e, test_cli_init_omits_binding_for_cargo_e2e
+- tests/repo_specs_english_only.rs: test_repo_specs_use_english_structural_keywords
+- tests/research_cli_e2e.rs: test_cli_research_scaffolds_and_refreshes_e2e
+- tests/sdd_init_cli.rs: test_cli_init_feature_creates_sdd_package_e2e, test_cli_init_architecture_creates_sdd_package_e2e, test_cli_init_issue_creates_single_spec_e2e, test_cli_init_sdd_package_refuses_partial_overwrite_e2e, test_cli_init_rejects_invalid_sdd_kind_e2e, test_cli_init_requires_kind_and_name_e2e, test_agent_spec_sdd_skill_routes_cli_workflow
 <!-- agent-spec:generated:end -->
 
 ## Findings

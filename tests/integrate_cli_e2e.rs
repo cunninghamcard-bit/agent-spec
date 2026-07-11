@@ -55,6 +55,22 @@ fn test_cli_integrate_installs_skills_e2e() {
 }
 
 #[test]
+fn test_cli_integrate_installs_research_skill_e2e() {
+    let dir = temp_dir("integrate-research-skill");
+
+    let output = run(&dir, &["integrate"]);
+    assert!(output.status.success(), "{:?}", output);
+
+    for root in [".agents/skills", ".claude/skills"] {
+        let skill_md = dir.join(root).join("agent-spec-research/SKILL.md");
+        assert!(skill_md.is_file(), "missing {}", skill_md.display());
+        let content = fs::read_to_string(&skill_md).unwrap();
+        assert!(content.contains("primary sources"));
+    }
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn test_cli_integrate_writes_policy_blocks_e2e() {
     let dir = temp_dir("integrate-blocks");
 

@@ -339,6 +339,14 @@ It installs the workflow skills for both agent systems (`.agents/skills/` for Co
 
 When `guard` sees changes under governed paths without a matching update to the document, it prints a `documentation impact unresolved` warning (warning-level: guard's exit status is unaffected). Dates tell you a document is old — the governs edge tells you it is probably wrong. Declare governance sparingly, on load-bearing documents only.
 
+**Research and learn.** When a spec carries clarification markers that reading the code cannot resolve, or the domain is unfamiliar, research is mandatory (the `research-required` lint enforces it):
+
+```bash
+agent-spec research docs/features/my-goal/spec.md --code .
+```
+
+This scaffolds `research.md` beside the spec and machine-refreshes its Current Codebase State region; the investigation itself follows the `agent-spec-research` skill — primary sources, per-claim citations, findings as Decision/Rationale/Alternatives. Then the learning half: the agent grills the user through each finding's decision one at a time (writing a learning record per confirmed round) before contract authoring may begin. Understanding the norms and the codebase is the cost the contract reviewer must pay.
+
 **Finishing a goal.** When a goal's contract verifies fully, graduate it:
 
 ```bash

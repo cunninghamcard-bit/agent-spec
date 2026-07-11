@@ -362,6 +362,10 @@ pass.
 
 The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable and can gate goal folders alongside `specs/`.
 
+## Grilled Decisions
+
+When the goal went through the `agent-spec-research` skill, the grill's confirmed decisions ARE the Decisions section: transcribe each one and cite research.md (the `research-uncited` lint checks this). Do not re-litigate grilled decisions during authoring.
+
 ## Spec File Structure
 
 ### Frontmatter (YAML)

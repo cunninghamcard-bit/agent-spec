@@ -162,6 +162,13 @@ pub const EMBEDDED_SKILLS: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     (
+        "agent-spec-research",
+        &[(
+            "SKILL.md",
+            include_str!("../../skills/agent-spec-research/SKILL.md"),
+        )],
+    ),
+    (
         "agent-spec-authoring",
         &[
             (

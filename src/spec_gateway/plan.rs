@@ -637,9 +637,16 @@ pub fn format_codebase_context(ctx: &CodebaseContext) -> String {
         }
     }
     if !ctx.test_functions.is_empty() {
-        out.push_str(&format!("\nTest functions ({}):\n", ctx.test_functions.len()));
+        out.push_str(&format!(
+            "\nTest functions ({}):\n",
+            ctx.test_functions.len()
+        ));
         for entry in &ctx.test_functions {
-            out.push_str(&format!("- {}: {}\n", entry.file, entry.function_names.join(", ")));
+            out.push_str(&format!(
+                "- {}: {}\n",
+                entry.file,
+                entry.function_names.join(", ")
+            ));
         }
     }
     out

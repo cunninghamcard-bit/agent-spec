@@ -106,6 +106,34 @@ fn test_cli_finish_removes_plan_and_tasks_e2e() {
 }
 
 #[test]
+fn test_cli_finish_removes_research_consumables_e2e() {
+    let dir = temp_dir("finish-research");
+    let goal = write_goal_package(&dir, PASSING_REPORT);
+    fs::write(goal.join("research.md"), "# R\n").unwrap();
+    fs::create_dir_all(goal.join("learning-records")).unwrap();
+    fs::write(goal.join("learning-records/0001-trigger.md"), "# LR\n").unwrap();
+
+    let output = run(
+        &dir,
+        &[
+            "finish",
+            "docs/features/registration/spec.md",
+            "--code",
+            ".",
+        ],
+    );
+
+    assert!(output.status.success(), "{:?}", output);
+    assert!(!goal.join("research.md").exists(), "research.md must go");
+    assert!(
+        !goal.join("learning-records").exists(),
+        "learning-records must go"
+    );
+    assert!(goal.join("spec.md").exists());
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn test_cli_finish_refuses_on_failing_contract_e2e() {
     let dir = temp_dir("finish-red");
     let goal = write_goal_package(&dir, FAILING_REPORT);

@@ -544,6 +544,120 @@ impl SpecLinter for ScenarioPresenceLinter {
 // SDD linters: needs-clarification (error) and open-questions (warning)
 // =============================================================================
 
+// =============================================================================
+// Research lints: research-required (error), research-uncited / research-
+// unfilled (warnings). Sibling research.md lives beside the spec file, so
+// these only fire for disk-parsed specs (source_path present).
+// =============================================================================
+
+fn sibling_research_path(doc: &SpecDocument) -> Option<std::path::PathBuf> {
+    let parent = doc.source_path.parent()?;
+    if parent.as_os_str().is_empty() {
+        return None;
+    }
+    Some(parent.join("research.md"))
+}
+
+/// Errors when a spec still carries an unresolved bracketed clarification
+/// marker and no sibling research.md exists: research is the designated
+/// resolution path for unknowns that reading the code cannot answer.
+pub struct ResearchRequiredLinter;
+
+impl SpecLinter for ResearchRequiredLinter {
+    fn name(&self) -> &str {
+        "research-required"
+    }
+
+    fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
+        let Some(research) = sibling_research_path(doc) else {
+            return Vec::new();
+        };
+        if research.is_file() || !has_needs_clarification_marker(&doc.source) {
+            return Vec::new();
+        }
+        vec![LintDiagnostic {
+            rule: "research-required".into(),
+            severity: Severity::Error,
+            message: "unresolved clarification markers with no research.md beside the spec".into(),
+            span: crate::spec_core::Span::line(0),
+            suggestion: Some(
+                "run `agent-spec research <spec> --code .` and resolve each unknown there".into(),
+            ),
+        }]
+    }
+}
+
+/// Warns when a sibling research.md exists but the spec's Current State and
+/// Decisions never mention it — researched conclusions should be cited.
+pub struct ResearchUncitedLinter;
+
+impl SpecLinter for ResearchUncitedLinter {
+    fn name(&self) -> &str {
+        "research-uncited"
+    }
+
+    fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
+        let Some(research) = sibling_research_path(doc) else {
+            return Vec::new();
+        };
+        if !research.is_file() {
+            return Vec::new();
+        }
+        let mut cited = false;
+        for section in &doc.sections {
+            match section {
+                Section::CurrentState { content, .. } => {
+                    cited |= content.contains("research.md");
+                }
+                Section::Decisions { items, .. } => {
+                    cited |= items.iter().any(|item| item.contains("research.md"));
+                }
+                _ => {}
+            }
+        }
+        if cited {
+            return Vec::new();
+        }
+        vec![LintDiagnostic {
+            rule: "research-uncited".into(),
+            severity: Severity::Warning,
+            message: "research.md exists but Current State and Decisions never cite it".into(),
+            span: crate::spec_core::Span::line(0),
+            suggestion: Some(
+                "reference research.md findings from Current State or Decisions".into(),
+            ),
+        }]
+    }
+}
+
+/// Warns while a sibling research.md still contains template placeholders.
+pub struct ResearchUnfilledLinter;
+
+impl SpecLinter for ResearchUnfilledLinter {
+    fn name(&self) -> &str {
+        "research-unfilled"
+    }
+
+    fn lint(&self, doc: &SpecDocument) -> Vec<LintDiagnostic> {
+        let Some(research) = sibling_research_path(doc) else {
+            return Vec::new();
+        };
+        let Ok(content) = std::fs::read_to_string(&research) else {
+            return Vec::new();
+        };
+        if !content.contains("[UNFILLED") {
+            return Vec::new();
+        }
+        vec![LintDiagnostic {
+            rule: "research-unfilled".into(),
+            severity: Severity::Warning,
+            message: "research.md still contains [UNFILLED template placeholders".into(),
+            span: crate::spec_core::Span::line(0),
+            suggestion: Some("complete the research before authoring the contract".into()),
+        }]
+    }
+}
+
 /// Errors on unresolved `[NEEDS CLARIFICATION` / `[NEEDS-CLARIFICATION`
 /// markers anywhere in a spec, including front-matter and comments.
 pub struct NeedsClarificationLinter;
@@ -2430,6 +2544,76 @@ fn truncate_bdd(s: &str, max: usize) -> String {
 mod tests {
     use super::*;
     use crate::spec_parser::parse_spec_from_str;
+
+    fn research_lint_fixture(dir_tag: &str, with_research: bool, cite: bool) -> SpecDocument {
+        let dir = std::env::temp_dir().join(format!(
+            "agent-spec-research-lint-{dir_tag}-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let marker = "[NEEDS ".to_string() + "CLARIFICATION: which flow]";
+        let cite_line = if cite {
+            "Grounded in research.md findings."
+        } else {
+            "Nothing cited here."
+        };
+        let spec = format!(
+            "spec: task\nname: \"r\"\n---\n\n## Intent\n\nAdd login. {marker}\n\n## Current State\n\n{cite_line}\n\n## Completion Criteria\n\nScenario: ok\n  Test: test_ok\n  Given a thing\n  When it runs\n  Then it passes\n"
+        );
+        std::fs::write(dir.join("spec.md"), &spec).unwrap();
+        if with_research {
+            std::fs::write(
+                dir.join("research.md"),
+                "# R\n\n- [UNFILLED: add findings]\n",
+            )
+            .unwrap();
+        }
+        crate::spec_parser::parse_spec(&dir.join("spec.md")).unwrap()
+    }
+
+    #[test]
+    fn test_lint_research_required_fires_on_unresolved_marker() {
+        let doc = research_lint_fixture("required", false, false);
+        let diags = ResearchRequiredLinter.lint(&doc);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].severity, Severity::Error);
+        assert!(
+            diags[0]
+                .suggestion
+                .as_deref()
+                .unwrap_or_default()
+                .contains("agent-spec research"),
+            "must name the resolution path"
+        );
+    }
+
+    #[test]
+    fn test_lint_research_required_quiet_with_research_present() {
+        let doc = research_lint_fixture("quiet", true, false);
+        assert!(ResearchRequiredLinter.lint(&doc).is_empty());
+        // The pre-existing clarification error still fires.
+        assert!(!NeedsClarificationLinter.lint(&doc).is_empty());
+    }
+
+    #[test]
+    fn test_lint_research_uncited_warns() {
+        let doc = research_lint_fixture("uncited", true, false);
+        let diags = ResearchUncitedLinter.lint(&doc);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].severity, Severity::Warning);
+
+        let cited = research_lint_fixture("cited", true, true);
+        assert!(ResearchUncitedLinter.lint(&cited).is_empty());
+    }
+
+    #[test]
+    fn test_lint_research_unfilled_warns() {
+        let doc = research_lint_fixture("unfilled", true, false);
+        let diags = ResearchUnfilledLinter.lint(&doc);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].severity, Severity::Warning);
+    }
 
     #[test]
     fn test_lint_needs_clarification_marker_is_error() {

@@ -31,6 +31,9 @@ impl LintPipeline {
         p.add(Box::new(super::linters::ScenarioPresenceLinter));
         p.add(Box::new(super::linters::SycophancyLinter));
         p.add(Box::new(super::linters::NeedsClarificationLinter));
+        p.add(Box::new(super::linters::ResearchRequiredLinter));
+        p.add(Box::new(super::linters::ResearchUncitedLinter));
+        p.add(Box::new(super::linters::ResearchUnfilledLinter));
         p.add(Box::new(super::linters::OpenQuestionsLinter));
         p.add(Box::new(super::linters::DecisionCoverageLinter));
         p.add(Box::new(super::linters::ObservableDecisionCoverageLinter));

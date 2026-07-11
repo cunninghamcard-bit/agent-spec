@@ -52,6 +52,7 @@ workflow but has no research or learning step.
 - tests/**
 - README.md
 - CHANGELOG.md
+- install-skills.sh
 - docs/features/research-and-learn/**
 
 ### Forbidden

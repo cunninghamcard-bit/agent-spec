@@ -255,6 +255,17 @@ enum Commands {
         #[arg(long, default_value = ".")]
         into: PathBuf,
     },
+    /// Create or refresh the goal's research.md (codebase state is machine-owned)
+    Research {
+        /// Goal contract file (typically docs/<kind>/<goal>/spec.md)
+        spec: PathBuf,
+        /// Code directory to scan
+        #[arg(long, default_value = ".")]
+        code: PathBuf,
+        /// Scan depth: shallow (default), full (includes pub API signatures)
+        #[arg(long, default_value = "shallow")]
+        depth: String,
+    },
     /// Graduate a verified goal: remove plan.md/tasks.md, keep or retire the contract
     Finish {
         /// Goal contract file (typically docs/<kind>/<goal>/spec.md)
@@ -461,6 +472,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Brief { spec, format } => cmd_brief(&spec, &format),
         Commands::Contract { spec, format } => cmd_contract(&spec, &format),
         Commands::Integrate { into } => cmd_integrate(&into),
+        Commands::Research { spec, code, depth } => cmd_research(&spec, &code, &depth),
         Commands::Finish {
             spec,
             code,
@@ -1485,6 +1497,110 @@ fn cmd_integrate(into: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+const RESEARCH_GENERATED_START: &str = "<!-- agent-spec:generated:start -->";
+const RESEARCH_GENERATED_END: &str = "<!-- agent-spec:generated:end -->";
+
+fn research_template(goal_name: &str) -> String {
+    format!(
+        r#"---
+artifact: research
+goal: "{goal_name}"
+derived_into: spec.md
+---
+
+# {goal_name} — Research
+
+> Follow every claim back to the source that owns it. Primary sources
+> first; never trust parametric knowledge. See the agent-spec-research
+> skill for the methodology.
+
+## Unknowns
+
+- [UNFILLED: list each question this research must answer — start from the
+  spec's bracketed clarification markers]
+
+## Industry Norms & Prior Art
+
+- [UNFILLED: findings from primary sources, one bullet per claim, each with
+  its Source]
+
+## Current Codebase State
+
+{RESEARCH_GENERATED_START}
+(run `agent-spec research` to fill this section)
+{RESEARCH_GENERATED_END}
+
+## Findings
+
+### F1: [UNFILLED: name the decision]
+
+- **Decision**: [UNFILLED]
+- **Rationale**: [UNFILLED]
+- **Alternatives considered**: [UNFILLED]
+"#
+    )
+}
+
+/// Create or refresh a goal's research.md. The codebase-state managed
+/// region is machine-owned; everything else belongs to the researcher.
+fn cmd_research(spec: &Path, code: &Path, depth: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let gw = crate::spec_gateway::SpecGateway::load(spec)?;
+    let contract = gw.plan();
+    let scan_depth = crate::spec_gateway::plan::ScanDepth::parse(depth);
+    let ctx =
+        crate::spec_gateway::plan::build_plan_context(&contract, gw.resolved(), code, scan_depth);
+    let scan = crate::spec_gateway::plan::format_codebase_context(&ctx.codebase_context);
+
+    let parent = spec
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let research_path = parent.join("research.md");
+
+    let existing = if research_path.is_file() {
+        std::fs::read_to_string(&research_path)?
+    } else {
+        let template = research_template(&gw.resolved().task.meta.name);
+        println!("created {}", research_path.display());
+        template
+    };
+
+    let (Some(start), Some(end)) = (
+        existing.find(RESEARCH_GENERATED_START),
+        existing.find(RESEARCH_GENERATED_END),
+    ) else {
+        return Err(format!(
+            "{} has no managed codebase-state region ({RESEARCH_GENERATED_START} ... {RESEARCH_GENERATED_END})",
+            research_path.display()
+        )
+        .into());
+    };
+    if start > end {
+        return Err(format!(
+            "{} has malformed managed-region markers",
+            research_path.display()
+        )
+        .into());
+    }
+
+    let after = end + RESEARCH_GENERATED_END.len();
+    let updated = format!(
+        "{}{}\n{}\n{}{}",
+        &existing[..start],
+        RESEARCH_GENERATED_START,
+        scan.trim_end(),
+        RESEARCH_GENERATED_END,
+        &existing[after..]
+    );
+    std::fs::write(&research_path, updated)?;
+    println!("refreshed codebase state in {}", research_path.display());
+    println!(
+        "next: fill Unknowns and Industry Norms, then grill the user (agent-spec-research skill)"
+    );
+    Ok(())
+}
+
 /// Graduate a verified goal package: the counterpart of `init`.
 fn cmd_finish(
     spec: &Path,
@@ -1528,13 +1644,19 @@ fn cmd_finish(
     }
 
     let mut removed = 0;
-    for name in ["plan.md", "tasks.md"] {
+    for name in ["plan.md", "tasks.md", "research.md"] {
         let artifact = parent.join(name);
         if artifact.is_file() {
             std::fs::remove_file(&artifact)?;
             println!("removed {}", artifact.display());
             removed += 1;
         }
+    }
+    let learning_records = parent.join("learning-records");
+    if learning_records.is_dir() {
+        std::fs::remove_dir_all(&learning_records)?;
+        println!("removed {}/", learning_records.display());
+        removed += 1;
     }
     if removed == 0 {
         println!("no goal artifacts needed cleanup");

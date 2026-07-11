@@ -24,6 +24,18 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Added
 
+- **Research and Learn.** Demand-driven pre-contract research: the
+  `research` command scaffolds a goal's research.md and machine-refreshes
+  its codebase-state region; the `agent-spec-research` skill owns the
+  methodology (primary sources, per-claim citations, gh toolkit,
+  Decision/Rationale/Alternatives findings) and the grill protocol (each
+  decision put to the user one at a time, learning records written per
+  confirmed round). Lints: `research-required` (error — unresolved
+  clarification markers with no research.md), `research-uncited` and
+  `research-unfilled` (warnings). integrate ships the new skill; finish
+  removes research.md and learning-records/ as consumables. Skills are
+  now cross-linked in the Pocock composition model.
+
 - **`integrate` — one-command project adoption.** Installs the embedded
   workflow skills into the target project's `.agents/skills/` (Codex) and
   `.claude/skills/` (Claude Code) and writes a managed, prose-only policy
