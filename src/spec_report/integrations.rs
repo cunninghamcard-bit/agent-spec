@@ -83,10 +83,137 @@ pub fn has_drifted(existing: &str, rendered: &str) -> bool {
     existing.trim() != rendered.trim()
 }
 
+// ── Target-project integration (the `integrate` command) ───────────────
+
+pub const INTEGRATION_START: &str = "<!-- agent-spec:integration:start -->";
+pub const INTEGRATION_END: &str = "<!-- agent-spec:integration:end -->";
+
+/// The managed policy block written into a target project's AGENTS.md and
+/// CLAUDE.md. Policy only: what applies, where artifacts live, what is
+/// authoritative, and which skills own the workflow. No fenced code blocks,
+/// no CLI invocations — operations are exposed through the CLI and skills.
+pub const POLICY_BLOCK: &str = "\
+## Spec-Driven Development
+
+Use SDD before substantial changes to code, tests, configuration, or
+structure when the work needs shared context or a durable decision record.
+Skip SDD for trivial or tightly localized work unless explicitly asked.
+
+Each substantial goal lives in one kebab-case folder: docs/features/<goal>
+for new capabilities, docs/issues/<goal> for complex bugs, and
+docs/architecture/<goal> for refactors and cross-module design. The goal's
+spec.md is the authoritative contract — human-readable and mechanically
+verified by agent-spec. plan.md and tasks.md are execution materials and
+never override it.
+
+Resolve every bracketed NEEDS-CLARIFICATION marker before implementation;
+the lint gate enforces this. Verified goals graduate: consumable artifacts
+are removed, durable rules are promoted, and history stays in git.
+
+The agent-spec-sdd skill owns goal classification and the workflow. Command
+usage lives in the agent-spec-tool-first skill; contract authoring guidance
+lives in the agent-spec-authoring skill.";
+
+/// Insert or refresh the managed block in a declaration file's content.
+/// Missing markers: append (preserving existing content). Present markers:
+/// replace only what is between them.
+pub fn upsert_managed_block(existing: &str, block: &str) -> String {
+    let framed = format!("{INTEGRATION_START}\n{block}\n{INTEGRATION_END}");
+    if let (Some(start), Some(end)) = (
+        existing.find(INTEGRATION_START),
+        existing.find(INTEGRATION_END),
+    ) && start < end
+    {
+        let after = end + INTEGRATION_END.len();
+        return format!("{}{}{}", &existing[..start], framed, &existing[after..]);
+    }
+    if existing.trim().is_empty() {
+        return format!("{framed}\n");
+    }
+    let sep = if existing.ends_with('\n') {
+        "\n"
+    } else {
+        "\n\n"
+    };
+    format!("{existing}{sep}{framed}\n")
+}
+
+/// The workflow skills embedded at compile time so `integrate` can install
+/// them into target projects without a network or source checkout.
+pub const EMBEDDED_SKILLS: &[(&str, &[(&str, &str)])] = &[
+    (
+        "agent-spec-sdd",
+        &[(
+            "SKILL.md",
+            include_str!("../../skills/agent-spec-sdd/SKILL.md"),
+        )],
+    ),
+    (
+        "agent-spec-tool-first",
+        &[
+            (
+                "SKILL.md",
+                include_str!("../../skills/agent-spec-tool-first/SKILL.md"),
+            ),
+            (
+                "references/commands.md",
+                include_str!("../../skills/agent-spec-tool-first/references/commands.md"),
+            ),
+        ],
+    ),
+    (
+        "agent-spec-authoring",
+        &[
+            (
+                "SKILL.md",
+                include_str!("../../skills/agent-spec-authoring/SKILL.md"),
+            ),
+            (
+                "references/patterns.md",
+                include_str!("../../skills/agent-spec-authoring/references/patterns.md"),
+            ),
+        ],
+    ),
+];
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_integration_policy_block_is_prose_only() {
+        assert!(
+            !POLICY_BLOCK.contains("```"),
+            "policy block must contain no fenced code"
+        );
+        for line in POLICY_BLOCK.lines() {
+            let t = line.trim();
+            assert!(
+                !t.starts_with("agent-spec ") && !t.starts_with("$"),
+                "policy block must not invoke the CLI: {t}"
+            );
+        }
+        assert!(POLICY_BLOCK.contains("agent-spec-sdd skill"));
+    }
+
+    #[test]
+    fn test_upsert_managed_block_appends_and_replaces() {
+        let created = upsert_managed_block("", "policy v1");
+        assert!(created.starts_with(INTEGRATION_START));
+        assert!(created.contains("policy v1"));
+
+        let appended = upsert_managed_block("# My Project\n\ncustom rules\n", "policy v1");
+        assert!(appended.starts_with("# My Project"));
+        assert!(appended.contains("custom rules"));
+        assert!(appended.contains("policy v1"));
+
+        let refreshed = upsert_managed_block(&appended, "policy v2");
+        assert!(refreshed.contains("policy v2"));
+        assert!(!refreshed.contains("policy v1"));
+        assert!(refreshed.starts_with("# My Project"));
+        assert_eq!(refreshed.matches(INTEGRATION_START).count(), 1);
+    }
 
     #[test]
     fn test_all_targets_share_integration_body() {

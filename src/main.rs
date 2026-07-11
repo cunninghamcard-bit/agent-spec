@@ -249,6 +249,12 @@ enum Commands {
         #[arg(long, default_value = "text")]
         format: String,
     },
+    /// Install agent-spec governance into a target project (skills + managed policy blocks)
+    Integrate {
+        /// Target project directory
+        #[arg(long, default_value = ".")]
+        into: PathBuf,
+    },
     /// Graduate a verified goal: remove plan.md/tasks.md, keep or retire the contract
     Finish {
         /// Goal contract file (typically docs/<kind>/<goal>/spec.md)
@@ -454,6 +460,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         ),
         Commands::Brief { spec, format } => cmd_brief(&spec, &format),
         Commands::Contract { spec, format } => cmd_contract(&spec, &format),
+        Commands::Integrate { into } => cmd_integrate(&into),
         Commands::Finish {
             spec,
             code,
@@ -1444,6 +1451,40 @@ fn cmd_contract(spec: &Path, format: &str) -> Result<(), Box<dyn std::error::Err
 
 // ── Guard (git pre-commit) ──────────────────────────────────────
 
+/// Install agent-spec governance into a target project: workflow skills for
+/// both agent systems plus a managed, prose-only policy block in AGENTS.md
+/// and CLAUDE.md. Idempotent; re-run after upgrading agent-spec.
+fn cmd_integrate(into: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::spec_report::integrations::{EMBEDDED_SKILLS, POLICY_BLOCK, upsert_managed_block};
+
+    if !into.is_dir() {
+        return Err(format!("target project directory not found: {}", into.display()).into());
+    }
+
+    for skills_root in [".agents/skills", ".claude/skills"] {
+        for (skill, files) in EMBEDDED_SKILLS {
+            for (rel, content) in *files {
+                let path = into.join(skills_root).join(skill).join(rel);
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&path, content)?;
+            }
+            println!("installed {}/{}", skills_root, skill);
+        }
+    }
+
+    for declaration in ["AGENTS.md", "CLAUDE.md"] {
+        let path = into.join(declaration);
+        let existing = std::fs::read_to_string(&path).unwrap_or_default();
+        let updated = upsert_managed_block(&existing, POLICY_BLOCK);
+        std::fs::write(&path, updated)?;
+        println!("updated {} (managed policy block)", declaration);
+    }
+
+    Ok(())
+}
+
 /// Graduate a verified goal package: the counterpart of `init`.
 fn cmd_finish(
     spec: &Path,
@@ -2401,11 +2442,13 @@ fn cmd_init_sdd_at(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let goal = kebab_case(name)?;
     let goal_dir = output_dir.join(root).join(kind.directory()).join(&goal);
+    let binding = detect_test_binding(output_dir);
+    let spec_body = generate_sdd_spec_with_binding(name, kind, binding.as_deref());
     let artifacts = if matches!(kind, SddKind::Issue) {
-        vec![("spec.md", generate_sdd_spec(name, kind))]
+        vec![("spec.md", spec_body)]
     } else {
         vec![
-            ("spec.md", generate_sdd_spec(name, kind)),
+            ("spec.md", spec_body),
             ("plan.md", generate_sdd_plan(name)),
             ("tasks.md", generate_sdd_tasks(name)),
         ]
@@ -2459,7 +2502,24 @@ fn cmd_init_sdd_at(
     Ok(())
 }
 
+/// Detect the target project's test binding for generated goal specs.
+/// Node projects (package.json without Cargo.toml) get a vitest JUnit
+/// recipe prefilled; everything else authors its own binding.
+fn detect_test_binding(project_root: &Path) -> Option<String> {
+    if project_root.join("package.json").is_file() && !project_root.join("Cargo.toml").is_file() {
+        return Some(
+            "test_command: pnpm vitest run -t \"{selectors}\" --reporter=junit --outputFile=.agent-spec/report.xml\ntest_report: .agent-spec/report.xml\n"
+                .to_string(),
+        );
+    }
+    None
+}
+
 fn generate_sdd_spec(name: &str, kind: SddKind) -> String {
+    generate_sdd_spec_with_binding(name, kind, None)
+}
+
+fn generate_sdd_spec_with_binding(name: &str, kind: SddKind, test_binding: Option<&str>) -> String {
     let current_state = if matches!(kind, SddKind::Issue) {
         "### Impact\n\nDescribe the user or system impact.\n\n### Suspected Root Cause\n\nDescribe the suspected code path or root cause."
     } else {
@@ -2475,7 +2535,7 @@ fn generate_sdd_spec(name: &str, kind: SddKind) -> String {
 name: "{name}"
 inherits: project
 tags: [{kind}, sdd]
----
+{binding}---
 
 ## Intent
 
@@ -2536,7 +2596,8 @@ Scenario: Error path
 
 None.
 "#,
-        kind = kind.label()
+        kind = kind.label(),
+        binding = test_binding.unwrap_or("")
     )
 }
 

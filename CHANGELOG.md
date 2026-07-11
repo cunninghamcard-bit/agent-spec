@@ -24,6 +24,14 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ### Added
 
+- **`integrate` — one-command project adoption.** Installs the embedded
+  workflow skills into the target project's `.agents/skills/` (Codex) and
+  `.claude/skills/` (Claude Code) and writes a managed, prose-only policy
+  block into AGENTS.md and CLAUDE.md (created, appended, or refreshed
+  between markers; surrounding content preserved). Declaration files carry
+  policy only — operations live in the CLI and skills. `init --kind` now
+  prefills a vitest JUnit test binding for Node projects.
+
 - **`finish` — goal graduation.** The counterpart of `init`: re-verifies
   the goal's contract (aborting with the failing summary and deleting
   nothing otherwise), removes the consumable plan.md/tasks.md, keeps the

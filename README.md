@@ -323,6 +323,14 @@ agent-spec plan docs/features/my-goal/spec.md --code . --format prompt --out doc
 
 Contract anatomy for SDD work: use `## Current State` (where the code stands — spares the agent code archaeology), `## UX Shape` (ASCII interface sketches), and `## Open Questions`. A bracketed NEEDS-CLARIFICATION marker anywhere in a spec is an error-level lint — resolve every ambiguity before implementation.
 
+**Adopting agent-spec in a project.** One command installs governance:
+
+```bash
+agent-spec integrate --into .
+```
+
+It installs the workflow skills for both agent systems (`.agents/skills/` for Codex, `.claude/skills/` for Claude Code) and writes a managed, prose-only policy block into AGENTS.md and CLAUDE.md — declaration files carry policy, never operations; commands live in the CLI and skills. Re-run after upgrading agent-spec to refresh both. Generated goal specs are prefilled with a vitest JUnit test binding when the project has a `package.json`.
+
 **Doc Impact Guard.** A maintained document can declare which code paths it governs with an invisible marker line:
 
 ```markdown
