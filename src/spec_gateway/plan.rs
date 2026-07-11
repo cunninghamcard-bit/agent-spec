@@ -617,6 +617,34 @@ fn pattern_base_mentioned(text: &str, pattern: &str) -> bool {
 // === Formatting functions ===
 
 /// Format PlanContext as human-readable text.
+/// Format only the codebase scan — used by `research` to fill the managed
+/// codebase-state region of research.md.
+pub fn format_codebase_context(ctx: &CodebaseContext) -> String {
+    let mut out = String::new();
+    if ctx.files.is_empty() {
+        out.push_str("(no files matched the contract's Allowed Changes)\n");
+        return out;
+    }
+    out.push_str(&format!("Files ({}):\n", ctx.files.len()));
+    for file in &ctx.files {
+        if file.summary.is_empty() {
+            out.push_str(&format!("- {}\n", file.path));
+        } else {
+            out.push_str(&format!("- {} — {}\n", file.path, file.summary));
+        }
+        for sig in &file.pub_signatures {
+            out.push_str(&format!("    {sig}\n"));
+        }
+    }
+    if !ctx.test_functions.is_empty() {
+        out.push_str(&format!("\nTest functions ({}):\n", ctx.test_functions.len()));
+        for entry in &ctx.test_functions {
+            out.push_str(&format!("- {}: {}\n", entry.file, entry.function_names.join(", ")));
+        }
+    }
+    out
+}
+
 pub fn format_plan_text(ctx: &PlanContext) -> String {
     let mut out = String::new();
 
