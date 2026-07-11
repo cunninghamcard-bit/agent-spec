@@ -13,7 +13,7 @@ description: |
 
 # Agent Spec Authoring
 
-> **Version:** 3.2.0 | **Last Updated:** 2026-03-19
+> **Version:** 3.3.0 | **Last Updated:** 2026-06-08 | **Tracks agent-spec:** 0.3.0 (BDD-spine)
 
 You are an expert at writing agent-spec Task Contracts. Help users by:
 - **Creating specs**: Scaffold new `.spec.md` files with correct structure (`.spec` also supported)
@@ -55,6 +55,7 @@ Writing a Contract is the **highest-value human activity** in the agent-spec wor
 | Boundaries | `## Boundaries` | Allowed / Forbidden / Out-of-scope |
 | Acceptance Criteria | `## Acceptance Criteria` / `## Completion Criteria` | BDD scenarios |
 | Out of Scope | `## Out of Scope` | Explicitly excluded items |
+| Questions (Discovery) | `## Questions` | Unresolved items to clarify (Phase 4; non-blocking) |
 
 ## Hard Syntax Rules
 
@@ -81,8 +82,8 @@ Refer to the local files for authoring patterns and examples:
 After writing or editing a spec:
 
 ```bash
-agent-spec parse specs/task.spec.md
-agent-spec lint specs/task.spec.md --min-score 0.7
+agent-spec parse docs/features/<goal>/spec.md
+agent-spec lint docs/features/<goal>/spec.md --min-score 0.7
 ```
 
 Do not hand a spec to an agent if:
@@ -265,9 +266,101 @@ At minimum, ask whether the contract covers:
 
 If these dimensions matter to the task, they should appear in scenarios, not only in Decisions.
 
+## BDD-spine Authoring (0.3.0)
+
+agent-spec 0.3.0 organizes authoring around Discovery → Formulation → Automation.
+These constructs are additive — they never change verdict semantics. `Example` is
+a synonym for `Scenario` (Cucumber alignment).
+
+### Rule → Example grouping
+
+Group related scenarios under a `Rule:` — a promise the system keeps,
+proven by one or more Examples. A Rule has a **stable kebab-case id** (used for
+references and promotion) and a mutable display name:
+
+```spec
+## Completion Criteria
+
+### Rule: reject-invalid-input — 拒绝非法输入
+Scenario: 空邮箱被拒绝
+  Test: test_rejects_empty_email
+  When 提交空邮箱
+  Then 返回 400
+
+Scenario: 弱密码被拒绝
+  Test: test_rejects_weak_password
+  When 提交密码 "123"
+  Then 返回 400
+```
+
+- The id is the leading kebab-case token (`reject-invalid-input`); it is separated
+  from the display name by an **em dash `—`** or **two-or-more spaces** (the parser
+  recognizes only these two separators — a plain `--` is NOT a separator and would
+  be swallowed into the id, tripping `bdd-rule-id`). **Never encode identity in the
+  display name** — rename freely, the id is the anchor.
+- `bdd-rule-id` lints malformed (non-kebab-case) ids; `bdd-rule-grouping` nudges
+  ungrouped scenarios. A scenario binds to a Rule by sitting under
+  the Rule header.
+- A Rule with no proving Example is "unproven" (surfaces in `audit`).
+
+### Discovery: `## Questions`
+
+Before a contract is fully formed, capture unresolved items in a `## Questions`
+section — bullet list. These are **non-blocking**
+(`open-question` lint is Info/Warning, never an Error; they do NOT affect
+`is_passing`). Mark resolved items with `[x]` / `RESOLVED`.
+
+```spec
+## Questions
+
+- 折扣能否叠加?
+- [x] 退款按折后价(已确认)
+```
+
+`agent-spec discover --from-codebase` seeds this section when reverse-engineering
+a spec from tests — a cold-start draft is honestly "known-incomplete".
+
+### lint-ack: acknowledging a warning with a reason
+
+When a lint Warning/Info is a deliberate, justified exception, acknowledge it
+inline **with a mandatory reason** instead of distorting the spec:
+
+```spec
+<!-- lint-ack: error-path — 本任务是只读查询,无失败路径 -->
+```
+
+- Format: `<!-- lint-ack: <code> — <reason> -->`. After `lint-ack:`, the code and
+  reason **must** be separated by an em dash `—` or a colon `:` — without one, the
+  whole string is parsed as the code and nothing is acknowledged.
+- Acknowledged lints are filtered from the report but **counted** (visible in
+  `audit`) — the waiver is on the record, not silenced.
+- **Errors can never be acknowledged** — only Warning/Info. A mechanical hard
+  failure is not negotiable.
+
+### capability specs and promotion
+
+A matured, reusable Rule can be promoted out of a task spec into a capability
+spec (`spec: capability`, the living-spec library) via
+`agent-spec promote <task> --rule <id> --to <cap> --code .`. The promote gate
+requires the Rule's Examples to pass (≥1 example). Authoring notes:
+
+- Capability specs use header `spec: capability`; a task can declare which
+  capability it contributes to with a `capability:` frontmatter field.
+- Promotion preserves the Rule's `id` — task references stay valid.
+- In a capability spec, an empty Rule (no Example yet) is allowed but flagged
+  unproven by `audit`.
+
+### Provenance (read when reviewing the matrix)
+
+`agent-spec matrix` stamps each result's evidence provenance: `Computational`
+(mechanical — tests, structural, boundary) vs `Inferential` (AI). When authoring,
+prefer scenarios provable by Computational evidence; reserve AI-only scenarios for
+genuinely non-mechanical intent, and never let Inferential evidence default to
+pass.
+
 ## SDD Conventions (goal folders)
 
-The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable and can gate goal folders alongside `specs/`.
+The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable; the default household is `docs/`.
 
 ## Grilled Decisions
 
@@ -278,12 +371,17 @@ When the goal went through the `agent-spec-research` skill, the grill's confirme
 ### Frontmatter (YAML)
 
 ```spec
-spec: task           # Level: org, project, task
-name: "Task Name"   # Human-readable name
-inherits: project    # Parent spec (optional)
-tags: [feature, api] # Tags for filtering
+spec: task                                    # Level: org, project, task
+name: "Task Name"                             # Human-readable name
+inherits: project                             # Parent spec (optional)
+tags: [feature, api]                          # Tags for filtering
+depends: [task-auth-base, task-db-migration]  # Spec dependencies (optional)
+estimate: 1d                                  # Effort estimate (optional): 0.5d, 1d, 2d, 1w, 4h
 ---
 ```
+
+- `depends`: list of spec file stems or spec names this spec depends on. Used by `agent-spec graph` to build the dependency DAG and critical path.
+- `estimate`: effort estimate string. Used by `agent-spec graph` for critical path weighting and node labels.
 
 
 ### Report Mode (non-Rust / TypeScript projects)
@@ -438,20 +536,6 @@ Before handing a Contract to an Agent, verify:
 | 6 | Steps use deterministic wording | "returns 201" not "should return 201" |
 | 7 | `agent-spec lint` score >= 0.7 | Quality gate before Agent starts |
 
-## Common Rationalizations When Writing Specs
-
-| Excuse | Reality |
-|--------|---------|
-| "This is too simple to need a spec" | Simple tasks take 5 min to spec. Un-specced simple tasks scope-creep into complex ones. |
-| "I'll write code first, then add the spec" | Specs written after code conform to what was built, not what's correct. |
-| "Exception paths don't matter much" | Bugs live in exception paths. Lint enforces exception >= happy path count. |
-| "I'll add Test selectors later" | Scenarios without `Test:` get `skip` verdicts — they verify nothing. |
-| "Boundaries are too restrictive" | Boundaries are a safety net for the agent, not a limitation on you. |
-| "One happy path scenario is enough" | One scenario = one test = zero confidence in edge cases. |
-| "The intent is obvious, no need to write it" | Obvious to you ≠ obvious to the agent. Write it. |
-
-If you catch yourself using any of these, stop and write the spec properly.
-
 ## Deprecated Patterns (Don't Use)
 
 | Deprecated | Use Instead | Reason |
@@ -462,19 +546,80 @@ If you catch yourself using any of these, stop and write the spec properly.
 | `brief` command to preview | `contract` command | `brief` is a legacy alias |
 | Only happy path scenarios | Include exception paths (>= happy) | Edge cases are where bugs live |
 
+## Scenario DSL Extensions
+
+### Critical tags (Goal Gate)
+
+Mark must-pass scenarios with `critical` tag. Critical failures set `gate_blocked=true` and exit code 2.
+
+```spec
+Scenario: 用户注册成功（critical）
+  Tags: critical
+  Test: test_register_returns_201
+  ...
+```
+
+Name suffix `（critical）`/`(critical)` also works as shorthand.
+
+### Review mode
+
+Scenarios requiring human sign-off use `Review: human`. Test pass → `pending_review` verdict.
+
+```spec
+Scenario: 安全审核
+  Review: human
+  Test: test_security_audit
+  ...
+```
+
+`--review-mode auto` (default) treats as pass; `--review-mode strict` treats as non-passing.
+
+### Optimize mode
+
+Scenarios that represent optimization targets use `Mode: optimize`. Pass → listed in `optimization_candidates`. Fail still blocks.
+
+```spec
+Scenario: 性能优化
+  Mode: optimize
+  Test: test_performance_baseline
+  ...
+```
+
+### Scenario dependencies
+
+Use `Depends:` for execution order. Prerequisite fail → dependent auto-skipped.
+
+```spec
+Scenario: 用户登录
+  Depends: 用户注册
+  Test: test_login
+  ...
+```
+
+Circular dependencies are detected by lint.
+
+## Dependency Graph Workflow
+
+After writing multiple related specs, add `depends` and `estimate` to frontmatter, then visualize:
+
+```bash
+agent-spec graph --spec-dir docs
+agent-spec graph --spec-dir docs --format svg > deps.svg
+```
+
+This helps identify the critical path and parallelizable work before starting implementation.
+
 ## Self-Hosting Rules
 
 When authoring specs for the `agent-spec` project itself:
 
-- Put task specs under `specs/`
-- Roadmap specs go in `specs/roadmap/`, promote to `specs/` when active
+- Contracts live in goal folders under `docs/features|issues|architecture/`
+- Durable capability rules accumulate in `docs/capabilities/` via promote
 - Update tests when DSL or verification behavior changes
-- Preserve the four verdicts: `pass`, `fail`, `skip`, `uncertain`
+- Preserve the six verdicts: `pass`, `fail`, `skip`, `uncertain`, `pending_review`
 - Do not let a task spec rely on implicit test-name matching
 
 ## Escalation
-
-**Authoring → Planning**: After the Contract passes `agent-spec lint` with score >= 0.7, generate plan context with `agent-spec plan <spec> --code . --format prompt` to give the AI Agent codebase awareness before coding.
 
 **Authoring → Implementation**: Switch to `agent-spec-tool-first` after the Contract is drafted and passes `agent-spec lint` with score >= 0.7.
 

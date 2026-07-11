@@ -32,11 +32,14 @@ fn spec_files(dir: &Path) -> Vec<PathBuf> {
     };
     entries
         .filter_map(|e| e.ok())
-        .map(|e| e.path())
+        .flat_map(|e| {
+            let p = e.path();
+            if p.is_dir() { spec_files(&p) } else { vec![p] }
+        })
         .filter(|p| {
             p.file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n.ends_with(".spec.md") || n.ends_with(".spec"))
+                .is_some_and(|n| n.ends_with(".spec.md") || n.ends_with(".spec") || n == "spec.md")
         })
         .collect()
 }
@@ -102,7 +105,7 @@ fn violations_in(path: &Path) -> Vec<String> {
 #[test]
 fn test_repo_specs_use_english_structural_keywords() {
     let mut all = Vec::new();
-    for dir in ["specs", "specs/roadmap", "examples"] {
+    for dir in ["docs", "examples"] {
         for file in spec_files(Path::new(dir)) {
             all.extend(violations_in(&file));
         }

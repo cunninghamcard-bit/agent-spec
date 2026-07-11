@@ -38,15 +38,21 @@ the codebase cannot resolve, or a domain unfamiliar to the team. The
 The user must understand both the industry norms and the codebase state —
 that cost cannot be delegated. After research.md is complete:
 
-1. Put each Finding's Decision to the user **one at a time**, with your
+1. **Teach before asking.** Walk the user through what the research
+   found — both halves: our own codebase and others' practice — with live
+   demos where possible, until they say it is clear. A decision made
+   before the teaching completes is invalid and must be re-grilled
+   (this rule was learned the hard way; see workflow-refactor records
+   0003/0006).
+2. Put each Finding's Decision to the user **one at a time**, with your
    recommended answer. Facts you can look up yourself — decisions are the
    user's.
-2. The moment a round is confirmed, write it to
+3. The moment a round is confirmed, write it to
    `<goal>/learning-records/NNNN-<dash-case-topic>.md`: the question, the
    recommendation, the user's answer, and what it overrides. Do not batch
    records at the end.
-3. Confirmed decisions flow into spec.md's Decisions, citing research.md.
-4. Do not begin authoring spec.md until every Finding has been grilled.
+4. Confirmed decisions flow into spec.md's Decisions, citing research.md.
+5. Do not begin authoring spec.md until every Finding has been grilled.
 
 ## Linkage
 

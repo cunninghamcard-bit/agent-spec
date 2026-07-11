@@ -6,6 +6,32 @@ All notable changes to `agent-spec` are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed (BREAKING) — Workflow Refactor (0.5.0)
+
+- **Staged artifact birth.** `init --kind` creates the goal folder and
+  `spec.md` only; `plan --out` births `plan.md` and `tasks.md` when the
+  planning step arrives. plan.md has a single owner.
+- **Single household.** The `specs/` task corpus and roadmap staging
+  directory are retired (history lives in git). Contracts live in
+  `docs/features|issues|architecture/<goal>/`; the project constitution
+  moved to `docs/project.spec.md` (`inherits: project` resolves `docs/`
+  before `specs/`); `promote` writes to `docs/capabilities/`.
+- **Defaults re-homed.** `guard`, `audit`, `graph`, and the
+  `install-hooks` pre-commit hook default to the `docs/` household; guard
+  collection is recursive (goal `spec.md` files included; `roadmap/`
+  directories skipped).
+- **Flow-grouped help.** `--help` stations all 25 subcommands under five
+  workflow flows (Adoption / Goal lifecycle / Review / Library governance
+  / Probe & AI); nothing hidden, nothing deleted.
+- **Declared invariant.** `lifecycle` prints a non-blocking warning when
+  more than one goal folder carries uncommitted changes (one active goal
+  per worktree).
+- **Skills rewritten around the flows.** `agent-spec-sdd` owns the flow
+  map; the commit step uses `stamp --dry-run` (never hand-written
+  trailers); graduation is `finish` then `promote`. The tool-first
+  commands reference documents every subcommand's station.
+
+
 ### Changed (BREAKING)
 
 - **`init` is goal-oriented and English-only.** `--kind` and `--name` are now

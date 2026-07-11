@@ -49,11 +49,54 @@ impl SddKind {
     }
 }
 
+/// Every subcommand has a station in one of the five workflow flows.
+/// `test_cli_help_groups_commands_by_flow_e2e` keeps this map complete.
+const FLOWS_HELP: &str = "\
+Commands by workflow flow:
+
+  Adoption (once per repo):
+    integrate            Install governance: skills + managed policy blocks
+    install-hooks        Install the pre-commit guard hook
+    discover             Reverse-engineer a draft contract from existing tests
+    gen-integrations     Ancestor of integrate; single-source integration files
+
+  Goal lifecycle (per goal):
+    init                 Create the goal folder and its contract skeleton
+    research             Create or refresh the goal's research.md
+    lint                 Analyze contract quality
+    contract             Render the Task Contract for agent execution
+    plan                 Generate plan context; --out births plan.md and tasks.md
+    lifecycle            Full gate: lint -> verify -> report
+    parse                Debugging internal: show the parsed AST
+    verify               Debugging internal: verification only
+    matrix               Debugging internal: coverage matrix per scenario
+    guard                Repo gate: all contracts against the git change scope
+    stamp                Machine-verified git trailers for the commit
+    checkpoint           Preview or create a VCS checkpoint
+    finish               Graduate the goal: remove consumables, keep the contract
+    promote              Lift a proven Rule into docs/capabilities/
+
+  Review (per review):
+    explain              Human-readable contract review summary
+    brief                Compatibility alias for the contract view
+
+  Library governance (periodic):
+    audit                Health check of the contract library
+    graph                Dependency graph of the contract library
+
+  Probe & AI (on trigger):
+    check-structure      Forbid a reference within a file glob
+    resolve-ai           Merge external AI decisions into a report
+    measure-determinism  [Experimental] Measure verification determinism
+";
+
 #[derive(Parser)]
 #[command(
     name = "agent-spec",
     version,
-    about = "AI-Native BDD/Spec verification tool"
+    about = "AI-Native BDD/Spec verification tool",
+    after_help = FLOWS_HELP,
+    help_template = "{about-with-newline}\n{usage-heading} {usage}\n\n{after-help}\nOptions:\n{options}"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -124,7 +167,7 @@ enum Commands {
     /// Audit a spec library's health (counts, unproven rules, open questions)
     Audit {
         /// Directory of specs to audit
-        #[arg(long = "spec-dir", default_value = "specs")]
+        #[arg(long = "spec-dir", default_value = "docs")]
         spec_dir: PathBuf,
         /// Output format: text, json
         #[arg(long, default_value = "text")]
@@ -176,7 +219,7 @@ enum Commands {
         /// Rule id to promote
         #[arg(long)]
         rule: String,
-        /// Target capability name (-> specs/capabilities/<name>.spec.md)
+        /// Target capability name (-> docs/capabilities/<name>.spec.md)
         #[arg(long = "to")]
         to: String,
         /// Code directory to verify against (the promote gate)
@@ -283,7 +326,7 @@ enum Commands {
     /// Git guard: lint all contract files + verify against the selected git change scope
     Guard {
         /// Spec directory to scan (repeatable)
-        #[arg(long, default_value = "specs")]
+        #[arg(long, default_value = "docs")]
         spec_dir: Vec<PathBuf>,
         /// Code directory
         #[arg(long, default_value = ".")]
@@ -376,7 +419,7 @@ enum Commands {
     /// Generate a dependency graph from spec files (DOT / SVG)
     Graph {
         /// Spec directory to scan
-        #[arg(long, default_value = "specs")]
+        #[arg(long, default_value = "docs")]
         spec_dir: PathBuf,
         /// Output format: dot (default), svg (requires system graphviz)
         #[arg(long, default_value = "dot")]
@@ -1024,10 +1067,15 @@ fn cmd_promote(
         .unwrap_or_default();
 
     let from_task = crate::spec_parser::task_stem_from_path(spec);
-    let cap_dir = spec
-        .parent()
-        .unwrap_or(Path::new("specs"))
-        .join("capabilities");
+    // The capability library lives in the docs/ household: nearest docs/
+    // ancestor of the goal spec, or <code>/docs when the spec sits outside
+    // one.
+    let docs_root = spec
+        .ancestors()
+        .find(|a| a.file_name().is_some_and(|n| n == "docs"))
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| code.join("docs"));
+    let cap_dir = docs_root.join("capabilities");
     std::fs::create_dir_all(&cap_dir)?;
     let cap_path = cap_dir.join(format!("{capability}.spec.md"));
     let existing = std::fs::read_to_string(&cap_path).ok();
@@ -1084,6 +1132,7 @@ fn cmd_lifecycle(
     };
 
     let gw = crate::spec_gateway::SpecGateway::load(spec)?;
+    warn_parallel_dirty_goals(spec, code);
     let change_scope = GitChangeScope::parse(change_scope)?;
     let ai_mode = parse_ai_mode(ai_mode)?;
     let effective_changes = resolve_command_change_paths(spec, code, change, change_scope)?;
@@ -1703,24 +1752,37 @@ fn normalize_change_for_docs(path: &Path, code_root: &Path) -> String {
         .to_string()
 }
 
-/// Collect spec files from every given directory (flat scan, missing
-/// directories are skipped).
+/// Collect contract files from every given directory (recursive walk,
+/// missing directories are skipped). Collects `*.spec`/`*.spec.md` files
+/// and goal contracts named `spec.md`. Directories named `roadmap` are
+/// staging areas and stay outside the default guard.
 fn collect_guard_spec_files(
     spec_dirs: &[PathBuf],
 ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    fn walk(dir: &Path, spec_files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(dir)? {
+            let Ok(entry) = entry else { continue };
+            let path = entry.path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n == "roadmap") {
+                    continue;
+                }
+                walk(&path, spec_files)?;
+            } else if is_spec_file(&path) && !spec_files.contains(&path) {
+                spec_files.push(path);
+            }
+        }
+        Ok(())
+    }
+
     let mut spec_files = Vec::new();
     for dir in spec_dirs {
         if !dir.exists() {
             continue;
         }
-        for entry in std::fs::read_dir(dir)? {
-            let Ok(entry) = entry else { continue };
-            let path = entry.path();
-            if is_spec_file(&path) && !spec_files.contains(&path) {
-                spec_files.push(path);
-            }
-        }
+        walk(dir, &mut spec_files)?;
     }
+    spec_files.sort();
     Ok(spec_files)
 }
 
@@ -1744,7 +1806,7 @@ fn cmd_guard(
     let first_dir = spec_dirs
         .first()
         .map(PathBuf::as_path)
-        .unwrap_or(Path::new("specs"));
+        .unwrap_or(Path::new("docs"));
     let effective_changes = resolve_guard_change_paths(first_dir, code, change, change_scope)?;
     if change.is_empty() && !effective_changes.is_empty() {
         eprintln!(
@@ -1836,11 +1898,15 @@ fn warn_duplicate_spec_extensions(spec_files: &[PathBuf]) {
     let mut by_stem: HashMap<String, Vec<&Path>> = HashMap::new();
     for path in spec_files {
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            // Only the .spec/.spec.md pair of the SAME path is a duplicate;
+            // key on the full parent path so goal spec.md files in different
+            // folders never collide.
             let stem = name
                 .strip_suffix(".spec.md")
                 .or_else(|| name.strip_suffix(".spec"))
                 .unwrap_or(name);
-            by_stem.entry(stem.to_string()).or_default().push(path);
+            let key = path.with_file_name(stem).to_string_lossy().into_owned();
+            by_stem.entry(key).or_default().push(path);
         }
     }
 
@@ -1977,6 +2043,42 @@ fn detect_staged_change_paths(
         &["diff", "--cached", "--name-only", "--diff-filter=ACMRD"],
         "failed to inspect staged changes",
     )
+}
+
+/// Declared invariant: one active goal per worktree. Boundary checks of
+/// parallel goals trip over each other's changes, so lifecycle warns (never
+/// blocks) when more than one goal folder carries uncommitted changes.
+fn warn_parallel_dirty_goals(spec: &Path, code: &Path) {
+    let Some(repo_root) = find_command_repo_root(spec, code) else {
+        return;
+    };
+    let Ok(changes) = detect_worktree_change_paths(&repo_root) else {
+        return;
+    };
+    let mut goals: Vec<String> = Vec::new();
+    for path in changes {
+        let rel = path.strip_prefix(&repo_root).unwrap_or(&path);
+        let comps: Vec<String> = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        if comps.len() > 3
+            && comps[0] == "docs"
+            && matches!(comps[1].as_str(), "features" | "issues" | "architecture")
+        {
+            let goal = format!("docs/{}/{}", comps[1], comps[2]);
+            if !goals.contains(&goal) {
+                goals.push(goal);
+            }
+        }
+    }
+    if goals.len() > 1 {
+        eprintln!(
+            "warning: one active goal per worktree — {} goal folders carry uncommitted changes: {}",
+            goals.len(),
+            goals.join(", ")
+        );
+    }
 }
 
 fn detect_worktree_change_paths(
@@ -2490,7 +2592,7 @@ fn cmd_install_hooks() -> Result<(), Box<dyn std::error::Error>> {
 # Auto-installed by: agent-spec install-hooks
 
 if command -v agent-spec >/dev/null 2>&1; then
-    agent-spec guard --spec-dir specs --code src --min-score 0.6
+    agent-spec guard --spec-dir docs --code . --min-score 0.6
     exit $?
 else
     echo "warning: agent-spec not found, skipping spec guard"
@@ -2509,9 +2611,8 @@ fi
         let mut content = existing;
         content.push_str("\n# agent-spec guard (appended)\n");
         content.push_str("if command -v agent-spec >/dev/null 2>&1; then\n");
-        content.push_str(
-            "    agent-spec guard --spec-dir specs --code src --min-score 0.6 || exit $?\n",
-        );
+        content
+            .push_str("    agent-spec guard --spec-dir docs --code . --min-score 0.6 || exit $?\n");
         content.push_str("fi\n");
         std::fs::write(&pre_commit, content)?;
     } else {
@@ -2566,15 +2667,9 @@ fn cmd_init_sdd_at(
     let goal_dir = output_dir.join(root).join(kind.directory()).join(&goal);
     let binding = detect_test_binding(output_dir);
     let spec_body = generate_sdd_spec_with_binding(name, kind, binding.as_deref());
-    let artifacts = if matches!(kind, SddKind::Issue) {
-        vec![("spec.md", spec_body)]
-    } else {
-        vec![
-            ("spec.md", spec_body),
-            ("plan.md", generate_sdd_plan(name)),
-            ("tasks.md", generate_sdd_tasks(name)),
-        ]
-    };
+    // Staged birth: init creates the contract only; plan.md and tasks.md are
+    // born by `plan --out` when the planning step arrives.
+    let artifacts = vec![("spec.md", spec_body)];
 
     for (filename, _) in &artifacts {
         let path = goal_dir.join(filename);
@@ -2720,53 +2815,6 @@ None.
 "#,
         kind = kind.label(),
         binding = test_binding.unwrap_or("")
-    )
-}
-
-fn generate_sdd_plan(name: &str) -> String {
-    format!(
-        r#"---
-artifact: plan
-goal: "{name}"
-status: draft
-derived_from: spec.md
----
-
-# {name} Implementation Plan
-
-> `spec.md` is authoritative. This plan may choose an implementation but must not redefine the contract.
-
-## Approach
-
-Describe the smallest implementation that satisfies the contract.
-
-## Affected Interfaces
-
-- List code, APIs, storage, and documentation boundaries.
-
-## Data and Control Flow
-
-```plantuml
-@startuml
-participant Caller
-participant System
-Caller -> System: request
-System --> Caller: result
-@enduml
-```
-
-## Compatibility and Migration
-
-Describe compatibility requirements or state that none are needed.
-
-## Test Strategy
-
-Map every Scenario in `spec.md` to public E2E evidence; add focused lower-level tests only where useful.
-
-## Risks
-
-- List concrete risks and mitigations.
-"#
     )
 }
 
@@ -2985,6 +3033,18 @@ fn cmd_plan(
     if let Some(out_path) = out {
         write_plan_output(out_path, &output)?;
         eprintln!("plan written to {}", out_path.display());
+        // Staged birth: the planning step also births tasks.md beside the
+        // plan, so init can leave both to this command.
+        if let Some(parent) = out_path.parent() {
+            let tasks_path = parent.join("tasks.md");
+            if !tasks_path.exists() {
+                std::fs::write(
+                    &tasks_path,
+                    generate_sdd_tasks(&gw.resolved().task.meta.name),
+                )?;
+                eprintln!("tasks written to {}", tasks_path.display());
+            }
+        }
     } else {
         print!("{output}");
     }
@@ -4136,78 +4196,6 @@ Scenario: verification metadata stays visible
         assert!(contract.contains("    Level: integration"));
         assert!(contract.contains("    Test Double: fixture_fs"));
         assert!(contract.contains("    Targets: spec_gateway/brief"));
-    }
-
-    #[test]
-    fn test_roadmap_phase_zero_and_one_specs_exist_and_capture_priorities() {
-        let phase0 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase0-contract-fidelity.spec.md"),
-        )
-        .unwrap();
-        let phase1 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase1-contract-review-loop.spec.md"),
-        )
-        .unwrap();
-
-        assert!(phase0.contains("最小 Phase 0 先补齐祖先 `Constraints` 与 `Decisions` 的继承"));
-        assert!(phase0.contains("Must`、`Must Not`、`Decisions"));
-        assert!(phase0.contains("step table"));
-
-        assert!(phase1.contains("agent-spec explain"));
-        assert!(phase1.contains("--format markdown"));
-        assert!(phase1.contains("stamp"));
-        assert!(phase1.contains("不要先做 destructive `stamp`"));
-    }
-
-    #[test]
-    fn test_roadmap_later_phase_specs_exist_and_are_split_by_concern() {
-        let phase2 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase2-run-history-and-vcs-context.spec.md"),
-        )
-        .unwrap();
-        let phase3 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase3-spec-governance.spec.md"),
-        )
-        .unwrap();
-        let phase4 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase4-ai-verification-expansion.spec.md"),
-        )
-        .unwrap();
-        let phase5 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase5-ecosystem-integrations.spec.md"),
-        )
-        .unwrap();
-        let phase6 = fs::read_to_string(
-            repo_root().join("specs/roadmap/task-phase6-advanced-verification.spec.md"),
-        )
-        .unwrap();
-
-        assert!(phase2.contains("run log"));
-        assert!(phase2.contains("`--change-scope jj`"));
-
-        assert!(phase3.contains("org.spec"));
-        assert!(phase3.contains("lint --quality"));
-        assert!(phase3.contains("本阶段不把 `phase:` 字段写进 spec front matter"));
-
-        assert!(phase4.contains("sycophancy-aware lint"));
-        assert!(phase4.contains("adversarial"));
-
-        assert!(phase5.contains("Codex"));
-        assert!(phase5.contains("Cursor"));
-        assert!(phase5.contains("Aider"));
-
-        assert!(phase6.contains("`layers`"));
-        assert!(phase6.contains("determinism"));
-    }
-
-    #[test]
-    fn test_roadmap_readme_documents_promotion_rule() {
-        let readme = fs::read_to_string(repo_root().join("specs/roadmap/README.md")).unwrap();
-
-        assert!(readme.contains("specs/roadmap/"));
-        assert!(readme.contains("not part of the default"));
-        assert!(readme.contains("top-level `specs/` directory"));
-        assert!(readme.contains("inherit the top-level"));
     }
 
     #[test]
@@ -5530,5 +5518,48 @@ Scenario: pass
         );
 
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn test_tool_first_reference_covers_all_subcommands() {
+        use clap::CommandFactory as _;
+        let reference = fs::read_to_string(
+            repo_root().join("skills/agent-spec-tool-first/references/commands.md"),
+        )
+        .unwrap();
+        for sub in crate::Cli::command().get_subcommands() {
+            let name = sub.get_name();
+            assert!(
+                reference.contains(name),
+                "commands.md must document `{name}`"
+            );
+            assert!(
+                crate::FLOWS_HELP.contains(name),
+                "FLOWS_HELP must station `{name}`"
+            );
+        }
+    }
+
+    #[test]
+    fn test_sdd_skill_documents_five_flows() {
+        let sdd = fs::read_to_string(repo_root().join("skills/agent-spec-sdd/SKILL.md")).unwrap();
+        for flow in [
+            "Adoption",
+            "Goal lifecycle",
+            "Review",
+            "Library governance",
+            "Probe & AI",
+        ] {
+            assert!(sdd.contains(flow), "sdd skill must document flow {flow}");
+        }
+        assert!(
+            sdd.contains("stamp") && sdd.contains("--dry-run"),
+            "commit step must name stamp"
+        );
+        assert!(
+            sdd.contains("promote") && sdd.contains("docs/capabilities/"),
+            "graduation must name promote into docs/capabilities/"
+        );
+        assert!(sdd.contains("One active goal per worktree"));
     }
 }

@@ -52,11 +52,11 @@ Humans define "what is correct" (Contract). Machines verify "is the code correct
 | `agent-spec lint <files>` | Spec quality check | After writing spec, before giving to Agent |
 | `agent-spec research <spec> --code .` | Scaffold/refresh goal research.md | Clarification markers unresolvable from code (methodology: agent-spec-research skill) |
 | `agent-spec lifecycle <spec> --code .` | Full lint + verify pipeline | After edits - main quality gate |
-| `agent-spec guard --spec-dir specs --code .` | Repo-wide check | Pre-commit / CI - all specs at once |
+| `agent-spec guard --spec-dir docs --code .` | Repo-wide check | Pre-commit / CI - all specs at once |
 | `agent-spec explain <spec> --format markdown` | PR-ready review summary | Contract Acceptance - paste into PR |
 | `agent-spec explain <spec> --history` | Execution history | See how many retries the Agent needed |
 | `agent-spec stamp <spec> --dry-run` | Preview git trailers | Before committing - traceability |
-| `agent-spec graph --spec-dir specs` | Dependency graph (DOT) | After writing specs - visualize deps & critical path |
+| `agent-spec graph --spec-dir docs` | Dependency graph (DOT) | After writing specs - visualize deps & critical path |
 | `agent-spec verify <spec> --code .` | Raw verification only | When you want verify without lint gate |
 | `agent-spec checkpoint status` | VCS-aware status | Check uncommitted state |
 
@@ -72,15 +72,15 @@ is a sensor (lint / report / audit), never a silent change to pass/fail.
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
 | `agent-spec matrix <spec> --code .` | Render the coverage matrix: Rule × Scenario × Test × Verdict × Provenance (`--format text\|json\|markdown`) | See which Rules/Examples are proven by which tests, and whether evidence is Computational vs Inferential |
-| `agent-spec promote <spec> --rule <id> --to <cap> --code .` | Promote a passing task Rule into `specs/capabilities/<cap>.spec.md` (living-spec library) | When a task Rule has matured and should be reused across tasks. Gate: the Rule's Examples must pass (≥1 example required); the stable `id` never changes |
-| `agent-spec audit --spec-dir specs` | Aggregate spec-library health: counts, unproven rules, ungrouped scenarios, open questions, malformed rules (`--format text\|json`) | Periodic library health snapshot. **Observability only — never gates** |
+| `agent-spec promote <spec> --rule <id> --to <cap> --code .` | Promote a passing task Rule into `docs/capabilities/<cap>.spec.md` (living-spec library) | When a task Rule has matured and should be reused across tasks. Gate: the Rule's Examples must pass (≥1 example required); the stable `id` never changes |
+| `agent-spec audit --spec-dir docs` | Aggregate spec-library health: counts, unproven rules, ungrouped scenarios, open questions, malformed rules (`--format text\|json`) | Periodic library health snapshot. **Observability only — never gates** |
 | `agent-spec discover --from-codebase --code <dir> --name <n> [--out <file>]` | Reverse-engineer a draft task spec from existing test functions (one bound scenario per test + a `## Questions` seed) | Cold-start: a codebase has tests but no spec. The draft is a parseable starting point, NOT a finished contract — refine the seeded Questions |
 | `agent-spec check-structure --code <dir> --forbid <substr> --in <glob>` | Mechanical layering guard: forbid a reference within a file glob; non-zero exit on violation | Enforce architecture invariants (e.g. `--forbid crate::services --in clients/**`) in CI |
 | `agent-spec gen-integrations [--target agents\|cursor\|claude\|all] [--out <dir>] [--check]` | Generate per-tool integration files from one source; `--check` exits non-zero on drift | Keep agents/cursor/claude integration files in sync from a single source; use `--check` as a CI drift gate |
 
 Notes:
 - `matrix` shares `verify`'s change-set flags (`--change`, `--change-scope`, `--ai-mode`) and default semantics.
-- `promote` writes to `specs/capabilities/<name>.spec.md`; the capability name is path-traversal-checked.
+- `promote` writes to `docs/capabilities/<name>.spec.md`; the capability name is path-traversal-checked.
 - `audit` and `check-structure` are mechanical and read-only (no code execution beyond scanning).
 
 ## Documentation
@@ -121,8 +121,8 @@ agent-spec init --kind architecture --name "CLI Parity Contract"
 Check Contract quality before handing to Agent. Like "code review" but for the Contract itself.
 
 ```bash
-agent-spec parse specs/user-registration.spec
-agent-spec lint specs/user-registration.spec --min-score 0.7
+agent-spec parse docs/features/user-registration/spec.md
+agent-spec lint docs/features/user-registration/spec.md --min-score 0.7
 ```
 
 Catches: malformed structure, zero-scenario acceptance sections, vague verbs, unquantified constraints, non-deterministic wording, missing test selectors, sycophancy bias, uncovered constraints, uncovered decisions (decision-coverage), unbound observable behavior decisions (observable-decision-coverage), uncovered output modes (output-mode-coverage), unverified precedence/fallback chains (precedence-fallback-coverage), weak mock-only I/O error scenarios (external-io-error-strength), missing verification-strength metadata on I/O scenarios (verification-metadata-suggestion), missing error paths (error-path), universal claims with insufficient scenarios (universal-claim), boundary entry points without matching scenarios (boundary-entry-point), untested flag combinations (flag-combination-coverage), untagged platform-specific decisions (platform-decision-tag).
@@ -149,7 +149,7 @@ Optional: team "Contract Review" — review 50-80 lines of natural language inst
 Agent consumes the structured contract:
 
 ```bash
-agent-spec contract specs/user-registration.spec
+agent-spec contract docs/features/user-registration/spec.md
 ```
 
 Agent is triple-constrained:
@@ -160,7 +160,7 @@ Agent is triple-constrained:
 ### Step 4: Agent self-checks with lifecycle (automatic retry loop)
 
 ```bash
-agent-spec lifecycle specs/user-registration.spec \
+agent-spec lifecycle docs/features/user-registration/spec.md \
   --code . --change-scope worktree --format json --run-log-dir .agent-spec/runs
 ```
 
@@ -196,10 +196,10 @@ When lifecycle fails, follow this exact sequence:
 
 ```bash
 # Pre-commit hook
-agent-spec guard --spec-dir specs --code . --change-scope staged
+agent-spec guard --spec-dir docs --code . --change-scope staged
 
 # CI (GitHub Actions)
-agent-spec guard --spec-dir specs --code . --change-scope worktree
+agent-spec guard --spec-dir docs --code . --change-scope worktree
 ```
 
 Runs lint + verify on ALL specs against current changes. Blocks commit/PR if any spec fails.
@@ -209,7 +209,7 @@ Runs lint + verify on ALL specs against current changes. Blocks commit/PR if any
 Human reviews a Contract-level summary, not a code diff:
 
 ```bash
-agent-spec explain specs/user-registration.spec --code . --format markdown
+agent-spec explain docs/features/user-registration/spec.md --code . --format markdown
 ```
 
 Reviewer judges two questions:
@@ -221,7 +221,7 @@ If both "yes" → approve. This is 10x faster than reading code diffs.
 Check retry history if needed:
 
 ```bash
-agent-spec explain specs/user-registration.spec --code . --history
+agent-spec explain docs/features/user-registration/spec.md --code . --history
 ```
 
 #### Assisting Contract Acceptance
@@ -236,7 +236,7 @@ When helping a human review a completed task:
 ### Step 7: Stamp and archive
 
 ```bash
-agent-spec stamp specs/user-registration.spec --dry-run
+agent-spec stamp docs/features/user-registration/spec.md --dry-run
 # Output: Spec-Name: 用户注册API
 #         Spec-Passing: true
 #         Spec-Summary: 4/4 passed, 0 failed, 0 skipped, 0 uncertain
@@ -284,23 +284,23 @@ agent-spec auto-detects the VCS from the project root. Behavior differs between 
 
 ```bash
 # Run only specific layers
-agent-spec lifecycle specs/task.spec --code . --layers lint,boundary,test
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --layers lint,boundary,test
 # Available: lint, boundary, test, ai
 ```
 
 ### Run Logging
 
 ```bash
-agent-spec lifecycle specs/task.spec --code . --run-log-dir .agent-spec/runs
-agent-spec explain specs/task.spec --history
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --run-log-dir .agent-spec/runs
+agent-spec explain docs/features/<goal>/spec.md --history
 ```
 
 ### AI Mode
 
 ```bash
-agent-spec verify specs/task.spec --code . --ai-mode off      # default - no AI
-agent-spec verify specs/task.spec --code . --ai-mode stub      # testing only
-agent-spec lifecycle specs/task.spec --code . --ai-mode caller # agent-as-verifier
+agent-spec verify docs/features/<goal>/spec.md --code . --ai-mode off      # default - no AI
+agent-spec verify docs/features/<goal>/spec.md --code . --ai-mode stub      # testing only
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --ai-mode caller # agent-as-verifier
 ```
 
 ### AI Verification: Caller Mode
@@ -310,7 +310,7 @@ When `--ai-mode caller` is used, the calling Agent acts as the AI verifier. This
 **Step 1: Emit AI requests**
 
 ```bash
-agent-spec lifecycle specs/task.spec --code . --ai-mode caller --format json
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --ai-mode caller --format json
 ```
 
 If any scenarios are skipped (no mechanical verifier covered them), the output JSON includes:
@@ -338,7 +338,7 @@ The Agent reads the pending requests, analyzes each scenario, then writes decisi
 Then merges them back:
 
 ```bash
-agent-spec resolve-ai specs/task.spec --code . --decisions decisions.json
+agent-spec resolve-ai docs/features/<goal>/spec.md --code . --decisions decisions.json
 ```
 
 This produces a final merged report where Skip verdicts are replaced with the Agent's AI decisions.
@@ -356,7 +356,7 @@ This produces a final merged report where Skip verdicts are replaced with the Ag
 
 3. **Tag critical scenarios**: Add `Tags: critical` to must-pass scenarios. Critical failures set `gate_blocked=true` and exit code 2, making them CI-friendly gates.
 
-4. **Use the dependency graph for planning**: Add `depends` and `estimate` to spec frontmatter, then run `agent-spec graph --spec-dir specs` to visualize the DAG and critical path before starting work.
+4. **Use the dependency graph for planning**: Add `depends` and `estimate` to spec frontmatter, then run `agent-spec graph --spec-dir docs` to visualize the DAG and critical path before starting work.
 
 5. **Layered verification**: Use `--layers` to run only what you need. During early development: `--layers boundary,test`. For CI: full `lifecycle`. For quick checks: `--layers lint`.
 

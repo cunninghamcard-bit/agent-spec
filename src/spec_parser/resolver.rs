@@ -67,9 +67,11 @@ fn default_search_dirs(source_path: &Path) -> Vec<PathBuf> {
             dirs.push(current.to_path_buf());
         }
 
-        let specs_dir = current.join("specs");
-        if specs_dir.is_dir() && seen.insert(specs_dir.clone()) {
-            dirs.push(specs_dir);
+        for household in ["docs", "specs"] {
+            let household_dir = current.join(household);
+            if household_dir.is_dir() && seen.insert(household_dir.clone()) {
+                dirs.push(household_dir);
+            }
         }
 
         let Some(parent) = current.parent() else {

@@ -2,21 +2,20 @@
 name: agent-spec-tool-first
 description: |
   CRITICAL: Use for agent-spec CLI tool workflow. Triggers on:
-  agent-spec, contract, lifecycle, guard, verify, explain, stamp, checkpoint, plan,
+  agent-spec, contract, lifecycle, guard, verify, explain, stamp, checkpoint,
   spec verification, task contract, spec quality, lint spec, run log,
   "how to verify", "how to use agent-spec", "spec failed", "guard failed",
   contract review, contract acceptance, PR review, code review workflow,
-  plan context, codebase scan, task sketch, implementation plan,
-  合约, 验证, 生命周期, 守卫, 规格检查, 质量门禁, 合约审查, 计划,
+  合约, 验证, 生命周期, 守卫, 规格检查, 质量门禁, 合约审查,
   "验证失败", "怎么用 agent-spec", "spec 不通过", "工作流"
 ---
 
 # Agent Spec Tool-First Workflow
 
-> **Version:** 3.2.0 | **Last Updated:** 2026-03-19
+> **Version:** 3.3.0 | **Last Updated:** 2026-06-08 | **Tracks agent-spec:** 0.3.0 (BDD-spine)
 
 You are an expert at using `agent-spec` as a CLI tool for contract-driven AI coding. Help users by:
-- **Planning**: Render task contracts with `contract`, generate plan context with `plan`
+- **Planning**: Render task contracts before coding with `contract`
 - **Implementing**: Follow contract Intent, Decisions, Boundaries
 - **Verifying**: Run `lifecycle` / `guard` to check code against specs
 - **Reviewing**: Use `explain` for human-readable summaries, `stamp` for git trailers
@@ -50,18 +49,39 @@ Humans define "what is correct" (Contract). Machines verify "is the code correct
 |---------|---------|-------------|
 | `agent-spec init --kind feature|issue|architecture` | Create an SDD goal package | After `agent-spec-sdd` classifies substantial work |
 | `agent-spec contract <spec>` | Render Task Contract | Before coding - read the execution plan |
-| `agent-spec plan <spec> --code .` | Generate plan context | Before coding - codebase scan + task sketch |
 | `agent-spec lint <files>` | Spec quality check | After writing spec, before giving to Agent |
 | `agent-spec research <spec> --code .` | Scaffold/refresh goal research.md | Clarification markers unresolvable from code (methodology: agent-spec-research skill) |
 | `agent-spec lifecycle <spec> --code .` | Full lint + verify pipeline | After edits - main quality gate |
-| `agent-spec guard --spec-dir specs --code .` | Repo-wide check | Pre-commit / CI - all specs at once |
+| `agent-spec guard --spec-dir docs --code .` | Repo-wide check | Pre-commit / CI - all specs at once |
 | `agent-spec explain <spec> --format markdown` | PR-ready review summary | Contract Acceptance - paste into PR |
 | `agent-spec explain <spec> --history` | Execution history | See how many retries the Agent needed |
 | `agent-spec stamp <spec> --dry-run` | Preview git trailers | Before committing - traceability |
+| `agent-spec graph --spec-dir docs` | Dependency graph (DOT) | After writing specs - visualize deps & critical path |
 | `agent-spec verify <spec> --code .` | Raw verification only | When you want verify without lint gate |
 | `agent-spec checkpoint status` | VCS-aware status | Check uncommitted state |
 
 **Non-Rust projects (report mode):** if the spec's frontmatter declares `test_command` + `test_report`, `verify`/`lifecycle` run that command once (the project's own test runner — vitest, jest, Maven, Gradle, pytest, ...) and judge scenarios from the JUnit XML report it writes, instead of running `cargo test`. Selectors bind to report testcase names (exact or suffix match; for vitest, use the `it` title). Zero matches, ambiguous matches, skipped testcases, and a missing report file are all `fail`. Everything else in this workflow is unchanged.
+
+## BDD-spine Commands (0.3.0)
+
+agent-spec 0.3.0 absorbs living-spec-library + scaffolding/governance under the
+BDD-spine model (Discovery → Formulation → Automation). These six commands are
+additive — **verdict semantics and `is_passing` are unchanged**; every new check
+is a sensor (lint / report / audit), never a silent change to pass/fail.
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `agent-spec matrix <spec> --code .` | Render the coverage matrix: Rule × Scenario × Test × Verdict × Provenance (`--format text\|json\|markdown`) | See which Rules/Examples are proven by which tests, and whether evidence is Computational vs Inferential |
+| `agent-spec promote <spec> --rule <id> --to <cap> --code .` | Promote a passing task Rule into `docs/capabilities/<cap>.spec.md` (living-spec library) | When a task Rule has matured and should be reused across tasks. Gate: the Rule's Examples must pass (≥1 example required); the stable `id` never changes |
+| `agent-spec audit --spec-dir docs` | Aggregate spec-library health: counts, unproven rules, ungrouped scenarios, open questions, malformed rules (`--format text\|json`) | Periodic library health snapshot. **Observability only — never gates** |
+| `agent-spec discover --from-codebase --code <dir> --name <n> [--out <file>]` | Reverse-engineer a draft task spec from existing test functions (one bound scenario per test + a `## Questions` seed) | Cold-start: a codebase has tests but no spec. The draft is a parseable starting point, NOT a finished contract — refine the seeded Questions |
+| `agent-spec check-structure --code <dir> --forbid <substr> --in <glob>` | Mechanical layering guard: forbid a reference within a file glob; non-zero exit on violation | Enforce architecture invariants (e.g. `--forbid crate::services --in clients/**`) in CI |
+| `agent-spec gen-integrations [--target agents\|cursor\|claude\|all] [--out <dir>] [--check]` | Generate per-tool integration files from one source; `--check` exits non-zero on drift | Keep agents/cursor/claude integration files in sync from a single source; use `--check` as a CI drift gate |
+
+Notes:
+- `matrix` shares `verify`'s change-set flags (`--change`, `--change-scope`, `--ai-mode`) and default semantics.
+- `promote` writes to `docs/capabilities/<name>.spec.md`; the capability name is path-traversal-checked.
+- `audit` and `check-structure` are mechanical and read-only (no code execution beyond scanning).
 
 ## Documentation
 
@@ -101,8 +121,8 @@ agent-spec init --kind architecture --name "CLI Parity Contract"
 Check Contract quality before handing to Agent. Like "code review" but for the Contract itself.
 
 ```bash
-agent-spec parse specs/user-registration.spec
-agent-spec lint specs/user-registration.spec --min-score 0.7
+agent-spec parse docs/features/user-registration/spec.md
+agent-spec lint docs/features/user-registration/spec.md --min-score 0.7
 ```
 
 Catches: malformed structure, zero-scenario acceptance sections, vague verbs, unquantified constraints, non-deterministic wording, missing test selectors, sycophancy bias, uncovered constraints, uncovered decisions (decision-coverage), unbound observable behavior decisions (observable-decision-coverage), uncovered output modes (output-mode-coverage), unverified precedence/fallback chains (precedence-fallback-coverage), weak mock-only I/O error scenarios (external-io-error-strength), missing verification-strength metadata on I/O scenarios (verification-metadata-suggestion), missing error paths (error-path), universal claims with insufficient scenarios (universal-claim), boundary entry points without matching scenarios (boundary-entry-point), untested flag combinations (flag-combination-coverage), untagged platform-specific decisions (platform-decision-tag).
@@ -124,24 +144,13 @@ Catches: malformed structure, zero-scenario acceptance sections, vague verbs, un
 
 Optional: team "Contract Review" — review 50-80 lines of natural language instead of 500 lines of code diff.
 
-### Step 3: Agent reads Contract, generates plan, and codes
+### Step 3: Agent reads Contract and codes
 
-Agent consumes the structured contract and generates plan context:
+Agent consumes the structured contract:
 
 ```bash
-# Read the contract
-agent-spec contract specs/user-registration.spec
-
-# Generate plan context with codebase scan
-agent-spec plan specs/user-registration.spec --code . --format prompt
+agent-spec contract docs/features/user-registration/spec.md
 ```
-
-The `plan` command outputs three blocks:
-- **Contract** — the full task contract (same as `contract` command)
-- **Codebase Context** — files in Allowed Changes paths with summaries, pub signatures, and test function names
-- **Task Sketch** — scenarios grouped by dependency order for implementation sequencing
-
-Use `--format prompt` to get a self-contained prompt for AI plan generation. Use `--depth full` to include pub API signatures.
 
 Agent is triple-constrained:
 - **Decisions** tell it "how to do it" (no technology shopping)
@@ -151,7 +160,7 @@ Agent is triple-constrained:
 ### Step 4: Agent self-checks with lifecycle (automatic retry loop)
 
 ```bash
-agent-spec lifecycle specs/user-registration.spec \
+agent-spec lifecycle docs/features/user-registration/spec.md \
   --code . --change-scope worktree --format json --run-log-dir .agent-spec/runs
 ```
 
@@ -168,14 +177,6 @@ Agent retry loop (no human needed):
 
 Run logs record this history — "this Contract took 3 tries to pass".
 
-#### The Iron Law
-
-```
-NO CODE IS "DONE" WITHOUT A PASSING LIFECYCLE
-```
-
-If lifecycle hasn't run in this session, you cannot claim completion. If lifecycle ran but had failures, code is not done. No exceptions.
-
 #### Retry Protocol
 
 When lifecycle fails, follow this exact sequence:
@@ -191,26 +192,14 @@ When lifecycle fails, follow this exact sequence:
 
 **Critical rule**: The spec defines "what is correct". If the code doesn't match, fix the code. If the spec itself is wrong, switch to authoring mode and update the Contract explicitly — never silently weaken acceptance criteria.
 
-#### Red Flags — Stop If You're Thinking This
-
-| Thought | Reality |
-|---------|---------|
-| "lifecycle is slow, skip it this once" | Skipping verification = delivering unverified code |
-| "I only changed one line, no need to re-run" | One line can break every scenario |
-| "skip means it's fine" | skip ≠ pass. skip = not verified |
-| "The spec is too strict, let me adjust it" | Changing spec to pass isn't fixing — it's weakening the contract |
-| "3 failures already, just submit what I have" | 3 failures → stop and escalate to human |
-| "I ran lifecycle earlier, it should still pass" | "Should" is not evidence. Run it again. |
-| "The test is flaky, not my code" | Prove it: run 3 times. If 2+ pass, investigate flake. If 0-1 pass, it's your code. |
-
 ### Step 5: Guard gate (pre-commit / CI)
 
 ```bash
 # Pre-commit hook
-agent-spec guard --spec-dir specs --code . --change-scope staged
+agent-spec guard --spec-dir docs --code . --change-scope staged
 
 # CI (GitHub Actions)
-agent-spec guard --spec-dir specs --code . --change-scope worktree
+agent-spec guard --spec-dir docs --code . --change-scope worktree
 ```
 
 Runs lint + verify on ALL specs against current changes. Blocks commit/PR if any spec fails.
@@ -220,10 +209,8 @@ Runs lint + verify on ALL specs against current changes. Blocks commit/PR if any
 Human reviews a Contract-level summary, not a code diff:
 
 ```bash
-agent-spec explain specs/user-registration.spec --code . --format markdown
+agent-spec explain docs/features/user-registration/spec.md --code . --format markdown
 ```
-
-**Evidence gate**: Before presenting results to the reviewer, run `agent-spec explain <spec> --format markdown` fresh. Read the output. Confirm all verdicts are `pass`. Do NOT report results from memory — run the command and read the output in this session.
 
 Reviewer judges two questions:
 1. **Is the Contract definition correct?** (Intent, Decisions, Boundaries make sense?)
@@ -234,7 +221,7 @@ If both "yes" → approve. This is 10x faster than reading code diffs.
 Check retry history if needed:
 
 ```bash
-agent-spec explain specs/user-registration.spec --code . --history
+agent-spec explain docs/features/user-registration/spec.md --code . --history
 ```
 
 #### Assisting Contract Acceptance
@@ -249,7 +236,7 @@ When helping a human review a completed task:
 ### Step 7: Stamp and archive
 
 ```bash
-agent-spec stamp specs/user-registration.spec --dry-run
+agent-spec stamp docs/features/user-registration/spec.md --dry-run
 # Output: Spec-Name: 用户注册API
 #         Spec-Passing: true
 #         Spec-Summary: 4/4 passed, 0 failed, 0 skipped, 0 uncertain
@@ -297,23 +284,23 @@ agent-spec auto-detects the VCS from the project root. Behavior differs between 
 
 ```bash
 # Run only specific layers
-agent-spec lifecycle specs/task.spec --code . --layers lint,boundary,test
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --layers lint,boundary,test
 # Available: lint, boundary, test, ai
 ```
 
 ### Run Logging
 
 ```bash
-agent-spec lifecycle specs/task.spec --code . --run-log-dir .agent-spec/runs
-agent-spec explain specs/task.spec --history
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --run-log-dir .agent-spec/runs
+agent-spec explain docs/features/<goal>/spec.md --history
 ```
 
 ### AI Mode
 
 ```bash
-agent-spec verify specs/task.spec --code . --ai-mode off      # default - no AI
-agent-spec verify specs/task.spec --code . --ai-mode stub      # testing only
-agent-spec lifecycle specs/task.spec --code . --ai-mode caller # agent-as-verifier
+agent-spec verify docs/features/<goal>/spec.md --code . --ai-mode off      # default - no AI
+agent-spec verify docs/features/<goal>/spec.md --code . --ai-mode stub      # testing only
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --ai-mode caller # agent-as-verifier
 ```
 
 ### AI Verification: Caller Mode
@@ -323,7 +310,7 @@ When `--ai-mode caller` is used, the calling Agent acts as the AI verifier. This
 **Step 1: Emit AI requests**
 
 ```bash
-agent-spec lifecycle specs/task.spec --code . --ai-mode caller --format json
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --ai-mode caller --format json
 ```
 
 If any scenarios are skipped (no mechanical verifier covered them), the output JSON includes:
@@ -351,7 +338,7 @@ The Agent reads the pending requests, analyzes each scenario, then writes decisi
 Then merges them back:
 
 ```bash
-agent-spec resolve-ai specs/task.spec --code . --decisions decisions.json
+agent-spec resolve-ai docs/features/<goal>/spec.md --code . --decisions decisions.json
 ```
 
 This produces a final merged report where Skip verdicts are replaced with the Agent's AI decisions.
@@ -360,6 +347,28 @@ This produces a final merged report where Skip verdicts are replaced with the Ag
 - When the calling Agent (Claude, Codex, etc.) can read and reason about code
 - For scenarios that can't be verified by tests alone (design intent, code quality)
 - When you want the Agent to be both implementor and verifier
+
+## Best Practices
+
+1. **Self-bootstrap**: Write specs first, lint them, then implement against them. The spec defines correctness before code exists.
+
+2. **Bind every scenario to a test**: Every scenario needs a `Test:` selector. Without it, TestVerifier skips the scenario and reports `skip` — not `pass`.
+
+3. **Tag critical scenarios**: Add `Tags: critical` to must-pass scenarios. Critical failures set `gate_blocked=true` and exit code 2, making them CI-friendly gates.
+
+4. **Use the dependency graph for planning**: Add `depends` and `estimate` to spec frontmatter, then run `agent-spec graph --spec-dir docs` to visualize the DAG and critical path before starting work.
+
+5. **Layered verification**: Use `--layers` to run only what you need. During early development: `--layers boundary,test`. For CI: full `lifecycle`. For quick checks: `--layers lint`.
+
+6. **Use text for humans, JSON for agents**: `--format json` gives machine-parseable output for retry loops; the default text format is human-readable. (Note: `lifecycle`/`verify` only honor `json` and `md`/`markdown` — other values, including `compact`/`diagnostic`, render as plain text.)
+
+7. **Aim for decision coverage**: Every Decision in the spec should be exercised by at least one scenario. The `decision-coverage` linter catches orphaned decisions.
+
+8. **Define precise boundaries**: Use path globs (`crates/foo/**`) for mechanical enforcement. Natural language prohibitions are lint-checked but not file-path enforced. Use both.
+
+9. **Use incremental resume for long specs**: `--resume` skips already-passed scenarios. `--resume=conservative` reruns all but detects regressions. Saves time on specs with 10+ scenarios.
+
+10. **Split roadmaps into small specs**: Each spec should have 3-8 scenarios. If you need more, split into multiple specs with `depends` relationships. Use `agent-spec graph` to visualize.
 
 ## When to Use / When NOT to Use
 
@@ -396,7 +405,6 @@ Month 3+:  Consider org.spec for cross-project governance
 | Preference | Use | Instead of |
 |------------|-----|------------|
 | `contract` | Render task contract | `brief` (legacy alias) |
-| `plan` | Contract + codebase + sketch | Manual code exploration |
 | `lifecycle` | Full pipeline | `verify` alone (misses lint) |
 | `guard` | Repo-wide | Multiple individual `lifecycle` calls |
 | `--change` | Explicit paths known | `--change-scope` when paths are known |

@@ -27,7 +27,7 @@ fn run(dir: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
-fn test_cli_init_feature_creates_sdd_package_e2e() {
+fn test_cli_init_feature_creates_spec_only_e2e() {
     let dir = temp_dir("feature");
     let output = run(
         &dir,
@@ -35,17 +35,15 @@ fn test_cli_init_feature_creates_sdd_package_e2e() {
     );
     assert!(output.status.success(), "{:?}", output);
 
+    // Staged birth: init creates the contract only; plan.md and tasks.md
+    // are born later by `plan --out`.
     let goal = dir.join("docs/features/plugins-hub");
     let spec = fs::read_to_string(goal.join("spec.md")).unwrap();
-    let plan = fs::read_to_string(goal.join("plan.md")).unwrap();
-    let tasks = fs::read_to_string(goal.join("tasks.md")).unwrap();
+    assert!(!goal.join("plan.md").exists());
+    assert!(!goal.join("tasks.md").exists());
     assert!(spec.contains("spec: task"));
     assert!(spec.contains("tags: [feature, sdd]"));
     assert!(spec.contains("```plantuml"));
-    assert!(plan.contains("## Affected Interfaces"));
-    assert!(plan.contains("```plantuml"));
-    assert!(tasks.contains("Covers: `<Scenario or Test selector>`"));
-    assert!(tasks.contains("## Quality Gates"));
 
     let parse = run(&dir, &["parse", goal.join("spec.md").to_str().unwrap()]);
     assert!(parse.status.success(), "{:?}", parse);
@@ -69,9 +67,9 @@ fn test_cli_init_architecture_creates_sdd_package_e2e() {
     );
     assert!(output.status.success(), "{:?}", output);
     let goal = dir.join("docs/architecture/agent-runtime-split");
-    for file in ["spec.md", "plan.md", "tasks.md"] {
-        assert!(goal.join(file).exists(), "missing {file}");
-    }
+    assert!(goal.join("spec.md").exists());
+    assert!(!goal.join("plan.md").exists());
+    assert!(!goal.join("tasks.md").exists());
     assert!(
         fs::read_to_string(goal.join("spec.md"))
             .unwrap()
@@ -122,7 +120,10 @@ fn test_cli_init_sdd_package_refuses_partial_overwrite_e2e() {
         &["init", "--kind", "feature", "--name", "Plugins Hub"],
     );
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("plan.md"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("refusing to update existing goal directory")
+    );
     assert_eq!(
         fs::read_to_string(goal.join("plan.md")).unwrap(),
         "keep me\n"
@@ -172,11 +173,11 @@ fn test_agent_spec_sdd_skill_routes_cli_workflow() {
 
     assert!(sdd.contains("deepchat-sdd"));
     assert_eq!(sdd, claude_sdd);
-    assert!(sdd.contains("deepchat-sdd-cleanup"));
     assert!(sdd.contains("agent-spec init --kind"));
     assert!(sdd.contains("`spec.md` is the authoritative"));
     assert!(sdd.contains("E2E evidence"));
-    assert!(sdd.contains("future `agent-spec finish`"));
+    assert!(sdd.contains("staged birth"));
+    assert!(sdd.contains("One active goal per worktree"));
     assert!(tool_first.contains("exact CLI execution, verdict interpretation, and retry"));
     assert!(authoring.contains("public CLI or product E2E tests"));
 

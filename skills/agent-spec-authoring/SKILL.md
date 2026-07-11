@@ -82,8 +82,8 @@ Refer to the local files for authoring patterns and examples:
 After writing or editing a spec:
 
 ```bash
-agent-spec parse specs/task.spec.md
-agent-spec lint specs/task.spec.md --min-score 0.7
+agent-spec parse docs/features/<goal>/spec.md
+agent-spec lint docs/features/<goal>/spec.md --min-score 0.7
 ```
 
 Do not hand a spec to an agent if:
@@ -360,7 +360,7 @@ pass.
 
 ## SDD Conventions (goal folders)
 
-The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable and can gate goal folders alongside `specs/`.
+The dedicated `agent-spec-sdd` skill classifies substantial work and creates its goal package with `agent-spec init --kind`. Author the generated fixed-name `spec.md` as the authoritative, human-readable Task Contract; `plan.md` and `tasks.md` must not redefine it. PlantUML fenced blocks may live in `## UX Shape`. Prefer BDD Scenarios proven through public CLI or product E2E tests, with focused lower-level tests only where useful. `guard --spec-dir` is repeatable; the default household is `docs/`.
 
 ## Grilled Decisions
 
@@ -603,8 +603,8 @@ Circular dependencies are detected by lint.
 After writing multiple related specs, add `depends` and `estimate` to frontmatter, then visualize:
 
 ```bash
-agent-spec graph --spec-dir specs
-agent-spec graph --spec-dir specs --format svg > deps.svg
+agent-spec graph --spec-dir docs
+agent-spec graph --spec-dir docs --format svg > deps.svg
 ```
 
 This helps identify the critical path and parallelizable work before starting implementation.
@@ -613,8 +613,8 @@ This helps identify the critical path and parallelizable work before starting im
 
 When authoring specs for the `agent-spec` project itself:
 
-- Put task specs under `specs/`
-- Roadmap specs go in `specs/roadmap/`, promote to `specs/` when active
+- Contracts live in goal folders under `docs/features|issues|architecture/`
+- Durable capability rules accumulate in `docs/capabilities/` via promote
 - Update tests when DSL or verification behavior changes
 - Preserve the six verdicts: `pass`, `fail`, `skip`, `uncertain`, `pending_review`
 - Do not let a task spec rely on implicit test-name matching

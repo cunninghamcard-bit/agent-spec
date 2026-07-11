@@ -177,7 +177,7 @@ This keeps the main integration mode tool-first. Library embedding remains avail
 ### 2. Render the contract for agent execution
 
 ```bash
-cargo run -q --bin agent-spec -- contract specs/my-task.spec
+cargo run -q --bin agent-spec -- contract docs/features/my-task/spec.md
 ```
 
 Use `--format json` if another tool or agent runtime needs structured output.
@@ -185,7 +185,7 @@ Use `--format json` if another tool or agent runtime needs structured output.
 ### 2b. Generate plan context (Contract + Codebase + Task Sketch)
 
 ```bash
-cargo run -q --bin agent-spec -- plan specs/my-task.spec --code .
+cargo run -q --bin agent-spec -- plan docs/features/my-task/spec.md --code .
 ```
 
 `plan` outputs three blocks:
@@ -199,7 +199,7 @@ Use `--format prompt` for a self-contained AI prompt (includes mandatory verific
 ### 3. Run the full quality gate
 
 ```bash
-cargo run -q --bin agent-spec -- lifecycle specs/my-task.spec --code . --format json
+cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --format json
 ```
 
 `lifecycle` runs:
@@ -221,14 +221,14 @@ The run fails if:
 cargo run -q --bin agent-spec -- guard --spec-dir specs --code .
 ```
 
-`guard` is intended for pre-commit / CI use. It lints all specs in `specs/` and verifies them against the current change set.
+`guard` is intended for pre-commit / CI use. It collects every contract in the `docs/` household (goal `spec.md` files, `docs/capabilities/`, and the project constitution) and verifies them against the current change set.
 
 Boundary checks run in **forbidden-only** mode under `guard`: `Forbidden` entries from every spec are enforced repo-wide, while `Allowed Changes` coverage is task-scoped and only gates single-spec `verify`/`lifecycle` runs.
 
 ### 5. Contract Acceptance (replaces Code Review)
 
 ```bash
-cargo run -q --bin agent-spec -- explain specs/my-task.spec --code . --format markdown
+cargo run -q --bin agent-spec -- explain docs/features/my-task/spec.md --code . --format markdown
 ```
 
 `explain` renders a reviewer-friendly summary of the Contract + verification results. Use `--format markdown` for direct PR description paste. Use `--history` to include retry trajectory from run logs.
@@ -238,7 +238,7 @@ The reviewer judges two questions: (1) Is the Contract definition correct? (2) D
 ### 6. Stamp for traceability
 
 ```bash
-cargo run -q --bin agent-spec -- stamp specs/my-task.spec --code . --dry-run
+cargo run -q --bin agent-spec -- stamp docs/features/my-task/spec.md --code . --dry-run
 ```
 
 Outputs git trailers (`Spec-Name`, `Spec-Passing`, `Spec-Summary`) for the commit message. Currently only `--dry-run` is supported.
@@ -309,7 +309,7 @@ The CLI creates one kebab-case folder per goal (a convention adapted from DeepCh
 - `docs/issues/<goal>/` — complex bug fixes and regressions
 - `docs/architecture/<goal>/` — refactors, migrations, cross-module design
 
-Feature and architecture packages contain authoritative `spec.md` plus implementation `plan.md` and execution `tasks.md`; issue packages contain one comprehensive `spec.md`. PlantUML stays inside Markdown fences. `guard --spec-dir` is repeatable, so goal folders and `specs/` can gate together:
+Goal packages are born staged: `init` creates the authoritative `spec.md` only, and `plan --out` births `plan.md` and `tasks.md` when the planning step arrives. PlantUML stays inside Markdown fences. `guard --spec-dir` is repeatable; the default household is `docs/`:
 
 ```bash
 agent-spec guard --spec-dir specs --spec-dir docs/features/my-goal --code .
@@ -358,7 +358,22 @@ agent-spec finish docs/features/my-goal/spec.md --code .
 Rules of thumb:
 
 - **Skip SDD for trivial work.** Style fixes, copy changes, and small localized logic edits do not need a contract; prefer skipping over creating a token artifact.
-- **Graduate completed work.** When a task's contract is fulfilled and stamped, promote durable rules to a capability spec (`agent-spec promote`) or archive the task spec; `specs/` should hold active contracts, not history. History lives in git.
+- **Graduate completed work.** `agent-spec finish` removes the consumables and keeps the contract; `agent-spec promote` lifts durable rules into `docs/capabilities/` (the truth layer). History lives in git, never in archive directories.
+
+## The Five Flows
+
+Every subcommand has a station in one of five flows (run `agent-spec --help` for the full map):
+
+- **Adoption** (once per repo): `integrate` → `install-hooks` → `discover` for brownfield projects. `gen-integrations` is integrate's ancestor, kept for compatibility.
+- **Goal lifecycle** (per goal): `init` → `research` → author the contract → `lint`/`contract` → `plan --out` → implement → `lifecycle` (with `parse`/`verify`/`matrix` as debugging internals) → `guard` → `stamp` at commit → `finish` → `promote`.
+- **Review** (per review): `explain` renders the reviewer-facing summary; `brief` aliases `contract`.
+- **Library governance** (periodic): `audit` health-checks the household; `graph` draws its structure.
+- **Probe & AI** (on trigger): `check-structure`, `resolve-ai`, `measure-determinism`.
+
+Two invariants govern the flows:
+
+- **One active goal per worktree.** Parallel goals trip each other's boundary checks; `lifecycle` warns when more than one goal folder carries uncommitted changes.
+- **Single household.** Contracts live in `docs/features|issues|architecture/<goal>/`; durable rules accumulate in `docs/capabilities/` via `promote`; history lives in git.
 
 ## Boundaries And Change Sets
 
@@ -381,16 +396,16 @@ Examples:
 The relevant commands accept repeatable `--change` flags:
 
 ```bash
-cargo run -q --bin agent-spec -- verify specs/my-task.spec --code . --change crates/spec-parser/src/parser.rs
-cargo run -q --bin agent-spec -- lifecycle specs/my-task.spec --code . --change crates/spec-parser/src/parser.rs
+cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
+cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change crates/spec-parser/src/parser.rs
 ```
 
 Single-task commands also support optional VCS-backed change discovery:
 
 ```bash
-cargo run -q --bin agent-spec -- verify specs/my-task.spec --code . --change-scope staged
-cargo run -q --bin agent-spec -- lifecycle specs/my-task.spec --code . --change-scope worktree
-cargo run -q --bin agent-spec -- lifecycle specs/my-task.spec --code . --change-scope jj
+cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --change-scope staged
+cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change-scope worktree
+cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --change-scope jj
 ```
 
 Available scopes: `none` (default for verify/lifecycle), `staged`, `worktree`, `jj`.
@@ -404,8 +419,8 @@ When a `.jj/` directory is detected (even colocated with `.git/`), use `--change
 The relevant commands accept:
 
 ```bash
-cargo run -q --bin agent-spec -- verify specs/my-task.spec --code . --ai-mode stub
-cargo run -q --bin agent-spec -- lifecycle specs/my-task.spec --code . --ai-mode stub
+cargo run -q --bin agent-spec -- verify docs/features/my-task/spec.md --code . --ai-mode stub
+cargo run -q --bin agent-spec -- lifecycle docs/features/my-task/spec.md --code . --ai-mode stub
 ```
 
 Available modes:
@@ -532,21 +547,17 @@ agent-spec lint docs/features/my-feature/spec.md --min-score 0.7
 agent-spec lifecycle docs/features/my-feature/spec.md --code . --change-scope worktree --format json
 
 # 5. Run the repo-wide guard before committing
-agent-spec guard --spec-dir specs --code .
+agent-spec guard --spec-dir docs --code .
 
 # 6. Generate the PR description
-agent-spec explain specs/my-feature.spec.md --code . --format markdown
+agent-spec explain docs/features/my-feature/spec.md --code . --format markdown
 ```
 
-The `guard` pre-commit hook is installed via `agent-spec install-hooks`. It checks all specs in `specs/` against your staged changes — your commit will be blocked if any contract fails.
+The `guard` pre-commit hook is installed via `agent-spec install-hooks`. It checks every contract in the `docs/` household against your staged changes — your commit will be blocked if any contract fails.
 
 ### Project-level rules
 
-The file `specs/project.spec` defines constraints that every task spec inherits. Read it before writing your first Contract — it tells you what the project enforces globally (e.g. "all public CLI behavior must have regression tests," "verification results must distinguish pass/fail/skip/uncertain").
-
-### Roadmap specs
-
-Future work lives in `specs/roadmap/`. These are real Task Contracts but they are not checked by the default `guard` run. When a roadmap spec is ready for implementation, promote it to the top-level `specs/` directory. See `specs/roadmap/README.md` for the promotion rule.
+The file `docs/project.spec.md` defines constraints that every task spec inherits (`inherits: project`). Read it before writing your first Contract — it tells you what the project enforces globally (e.g. "all public CLI behavior must have regression tests," "verification results must distinguish pass/fail/skip/uncertain").
 
 ### Using AI agents to contribute
 

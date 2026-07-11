@@ -9,15 +9,19 @@ pub fn integration_body() -> String {
     "\
 agent-spec is an AI-native BDD/spec verification tool. Use it tool-first:\n\
 \n\
-1. For substantial new work without a contract, create the CLI-owned goal package:\n\
-   `agent-spec init --kind feature|issue|architecture --name <goal>`.\n\
+1. For substantial new work without a contract, create the goal folder and its\n\
+   contract skeleton: `agent-spec init --kind feature|issue|architecture --name <goal>`.\n\
 2. Read the Task Contract: `agent-spec contract <spec>`.\n\
-3. Generate plan context: `agent-spec plan <spec> --code . --format prompt`.\n\
+3. Generate plan context (births plan.md and tasks.md beside the contract):\n\
+   `agent-spec plan <spec> --code . --out <goal>/plan.md`.\n\
 4. Implement within the contract's Boundaries.\n\
 5. Verify: `agent-spec lifecycle <spec> --code . --format json` — fix until all\n\
    scenarios pass (failed/skipped/uncertain all 0). Do not edit the spec to pass.\n\
-6. Repo-level gate before committing: `agent-spec guard --spec-dir specs --code .`.\n\
-7. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.\n\
+6. Repo-level gate before committing: `agent-spec guard --spec-dir docs --code .`.\n\
+7. Commit trailers come from the machine: `agent-spec stamp <spec> --code . --dry-run`.\n\
+8. Graduate: `agent-spec finish <spec> --code .`; lift durable Rules with\n\
+   `agent-spec promote` into `docs/capabilities/`.\n\
+9. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.\n\
 \n\
 The machine verifies whether the code satisfies the contract; you implement\n\
 against it, and a human reviews the contract."

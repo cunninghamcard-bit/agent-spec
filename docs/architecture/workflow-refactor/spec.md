@@ -40,6 +40,11 @@ Industry Norms & Prior Art (researching others' best practice).
 ## Boundaries
 
 ### Allowed Changes
+- Cargo.toml
+- Cargo.lock
+- AGENTS.md
+- .cursorrules
+- agent-spec-tool-first.md
 - src/main.rs
 - src/spec_gateway/**
 - src/spec_parser/resolver.rs

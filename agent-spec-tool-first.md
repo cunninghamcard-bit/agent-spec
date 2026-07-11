@@ -1,4 +1,7 @@
-# agent-spec — Agent Instructions
+---
+name: agent-spec-tool-first
+description: Use agent-spec as a CLI tool to verify code against Task Contracts.
+---
 
 agent-spec is an AI-native BDD/spec verification tool. Use it tool-first:
 

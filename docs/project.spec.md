@@ -11,7 +11,7 @@ tags: [bootstrap, project]
 ## Constraints
 
 ### Must
-- 任务级规格文件存放在 `specs/`
+- 任务合约以 goal 包形式存放在 `docs/features|issues|architecture/<goal>/`（单一户口）
 - 公开 CLI 与 gateway 行为必须有回归测试
 - DSL 语法变更必须同时更新 AST、解析输出和回归测试
 - 验证结果必须区分 `pass`、`fail`、`skip`、`uncertain`
@@ -24,7 +24,7 @@ tags: [bootstrap, project]
 - AI verifier 应通过可插拔 backend 接口产生结构化分析结果
 - agent-spec 应保持 provider-agnostic，由宿主 agent 注入 AI backend
 - 项目应提供 Claude Code 的 project-local skills，且主路径是 tool-first
-- 长期路线图 task spec 应暂存于 `specs/roadmap/`，只有提升到顶层 `specs/` 后才进入默认 guard
+- 耐久能力规则经 `promote` 累积于 `docs/capabilities/`（真相层）；历史从 git 恢复，不设归档目录
 - Task Contract 应区分 `Must`、`Must Not` 与 `Decisions`
 - 默认文本 `contract` 输出应保留结构化 Completion Criteria 细节
 

@@ -1,35 +1,20 @@
-# agent-spec Integration for Cursor
+# agent-spec rules (Cursor)
 
-## Workflow
+agent-spec is an AI-native BDD/spec verification tool. Use it tool-first:
 
-1. For substantial work without a contract, create one through the CLI: `agent-spec init --kind feature|issue|architecture --name <goal>`
-2. Read the contract: `agent-spec contract <spec>`
-3. Implement against the contract's Intent, Decisions, and Boundaries
-4. Verify: `agent-spec lifecycle <spec> --code . --format json`
-5. Guard: `agent-spec guard --spec-dir specs --code .`
-6. Review: `agent-spec explain <spec> --code . --format markdown`
+1. For substantial new work without a contract, create the goal folder and its
+contract skeleton: `agent-spec init --kind feature|issue|architecture --name <goal>`.
+2. Read the Task Contract: `agent-spec contract <spec>`.
+3. Generate plan context (births plan.md and tasks.md beside the contract):
+`agent-spec plan <spec> --code . --out <goal>/plan.md`.
+4. Implement within the contract's Boundaries.
+5. Verify: `agent-spec lifecycle <spec> --code . --format json` — fix until all
+scenarios pass (failed/skipped/uncertain all 0). Do not edit the spec to pass.
+6. Repo-level gate before committing: `agent-spec guard --spec-dir docs --code .`.
+7. Commit trailers come from the machine: `agent-spec stamp <spec> --code . --dry-run`.
+8. Graduate: `agent-spec finish <spec> --code .`; lift durable Rules with
+`agent-spec promote` into `docs/capabilities/`.
+9. Render the PR acceptance summary: `agent-spec explain <spec> --code . --format markdown`.
 
-## Key Commands
-
-- `agent-spec contract <spec>` — render the Task Contract for planning
-- `agent-spec lifecycle <spec> --code <dir>` — full lint + verify pipeline
-- `agent-spec guard --spec-dir specs --code .` — repo-wide pre-commit check
-- `agent-spec explain <spec>` — human-readable contract review summary
-- `agent-spec stamp <spec> --dry-run` — preview git trailers
-
-## Retry Protocol
-
-When `lifecycle` fails:
-1. Parse JSON output, find each scenario's `verdict` and `evidence`
-2. For `fail`: read evidence, fix code
-3. For `skip`: check `Test:` selector matches a real test name
-4. **Fix code based on evidence. Do NOT modify the spec file.**
-5. Re-run `lifecycle`
-6. After 3 consecutive failures on the same scenario, escalate to the human
-
-## Conventions
-
-- Task specs live in `specs/`
-- Verdicts: pass, fail, skip, uncertain — all four are distinct
-- **skip ≠ pass**: skipped scenarios block the pipeline
-- Exception scenarios should be >= happy path scenarios
+The machine verifies whether the code satisfies the contract; you implement
+against it, and a human reviews the contract.

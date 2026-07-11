@@ -153,8 +153,8 @@ See [`examples/rewrite-parity-contract.spec`](../../../examples/rewrite-parity-c
 After drafting a spec, run:
 
 ```bash
-agent-spec parse specs/task.spec.md
-agent-spec lint specs/task.spec.md --min-score 0.7
+agent-spec parse docs/features/<goal>/spec.md
+agent-spec lint docs/features/<goal>/spec.md --min-score 0.7
 ```
 
 If `parse` reports `0 scenarios`, the spec is not ready for `contract`, `lifecycle`, or `guard`.
@@ -408,13 +408,13 @@ name: "认证能力"
 （promoted from task; id preserved）
 ```
 
-- Created/extended by `agent-spec promote <task> --rule <id> --to <cap> --code .` (writes `specs/capabilities/<cap>.spec.md`).
+- Created/extended by `agent-spec promote <task> --rule <id> --to <cap> --code .` (writes `docs/capabilities/<cap>.spec.md`).
 - Promote gate: the Rule's Examples must pass, ≥1 example required. The `id` is preserved across the lift.
 
 ### Reverse-engineer a draft from tests (cold start)
 
 ```bash
-agent-spec discover --from-codebase --code src --name "drafted from tests" --out specs/draft.spec.md
+agent-spec discover --from-codebase --code src --name "drafted from tests" --out docs/features/drafted/spec.md
 ```
 
 Produces one `Test:`-bound scenario per test fn + a `## Questions` seed. The draft is parseable but NOT a finished contract — refine intent and the seeded questions.

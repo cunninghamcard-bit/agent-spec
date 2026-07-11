@@ -1,42 +1,82 @@
 # agent-spec CLI Command Reference
 
-## All Commands
+## All Commands — stations by workflow flow
+
+Every subcommand has a station in one of five flows (owned by the
+`agent-spec-sdd` skill):
 
 ```
-agent-spec <COMMAND>
+Adoption (once per repo):
+  integrate           Install governance: skills + managed policy blocks
+  install-hooks       Install the pre-commit guard hook
+  discover            Reverse-engineer a draft contract from existing tests
+  gen-integrations    Ancestor of integrate; single-source integration files
 
-Commands:
-  parse               Parse .spec/.spec.md files and show AST
-  lint                Analyze spec quality (detect smells)
-  verify              Verify code against specs
-  init                Create a starter .spec.md file
-  lifecycle           Run full lifecycle: lint -> verify -> report
-  brief               Compatibility alias for the contract view
-  contract            Render an explicit Task Contract for agent execution
-  guard               Git guard: lint all specs + verify against change scope
-  graph               Generate dependency graph from spec files (DOT/SVG)
-  explain             Generate a human-readable contract review summary
-  stamp               Preview git trailers for a verified contract
+Goal lifecycle (per goal):
+  init                Create the goal folder and its contract skeleton
+  research            Create or refresh the goal's research.md
+  lint                Analyze contract quality
+  contract            Render the Task Contract for agent execution
+  plan                Generate plan context; --out births plan.md and tasks.md
+  lifecycle           Full gate: lint -> verify -> report
+  parse               Debugging internal: show the parsed AST
+  verify              Debugging internal: verification only
+  matrix              Debugging internal: coverage matrix per scenario
+  guard               Repo gate: all contracts against the git change scope
+  stamp               Machine-verified git trailers for the commit
   checkpoint          Preview or create a VCS checkpoint
-  resolve-ai          Merge external AI decisions into a verification report
-  measure-determinism [Experimental] Measure contract verification determinism
-  install-hooks       Install git hooks for automatic spec checking
+  finish              Graduate the goal: remove consumables, keep the contract
+  promote             Lift a proven Rule into docs/capabilities/
+
+Review (per review):
+  explain             Human-readable contract review summary
+  brief               Compatibility alias for the contract view
+
+Library governance (periodic):
+  audit               Health check of the contract library
+  graph               Dependency graph of the contract library
+
+Probe & AI (on trigger):
+  check-structure     Forbid a reference within a file glob
+  resolve-ai          Merge external AI decisions into a report
+  measure-determinism [Experimental] Measure verification determinism
 ```
 
 ## Core Flow
 
 ```bash
-# 1. Read the contract
-agent-spec contract specs/task.spec
+# 1. Create the goal (contract skeleton only — staged birth)
+agent-spec init --kind feature --name "My Goal"
 
-# 2. Implement code...
+# 2. Research when triggered, then author the contract (see agent-spec-research)
+agent-spec research docs/features/my-goal/spec.md --code .
 
-# 3. Verify
-agent-spec lifecycle specs/task.spec --code . --format json
+# 3. Read the contract; plan births plan.md and tasks.md
+agent-spec contract docs/features/my-goal/spec.md
+agent-spec plan docs/features/my-goal/spec.md --code . --out docs/features/my-goal/plan.md
 
-# 4. Repo-wide guard
-agent-spec guard --spec-dir specs --code .
+# 4. Implement, then verify
+agent-spec lifecycle docs/features/my-goal/spec.md --code . --format json
+
+# 5. Repo-wide guard, machine-stamped commit
+agent-spec guard --spec-dir docs --code .
+agent-spec stamp docs/features/my-goal/spec.md --code . --dry-run
+
+# 6. Graduate and promote durable rules
+agent-spec finish docs/features/my-goal/spec.md --code .
+agent-spec promote docs/features/my-goal/spec.md --rule <id> --to <capability> --code .
 ```
+
+## integrate / research / finish
+
+```bash
+agent-spec integrate                 # adoption: skills + policy blocks into a project
+agent-spec research <goal>/spec.md --code .   # scaffold/refresh research.md
+agent-spec finish <goal>/spec.md --code .     # graduation: verify, then remove consumables
+```
+
+`finish --retire <goal>/spec.md` withdraws the whole goal. `promote`
+writes capability specs to `docs/capabilities/<name>.spec.md`.
 
 ## contract
 
@@ -54,7 +94,7 @@ agent-spec lifecycle <spec> --code <dir> \
   [--change-scope none|staged|worktree|jj] \
   [--ai-mode off|stub] \
   [--min-score 0.6] \
-  [--format text|json|md|compact|diagnostic] \
+  [--format text|json|md] \
   [--run-log-dir <dir>] \
   [--adversarial] \
   [--layers lint,boundary,test,ai,complexity] \
@@ -64,9 +104,11 @@ agent-spec lifecycle <spec> --code <dir> \
 
 Full pipeline: lint -> verify -> report. Default format is `json`.
 
+`lifecycle` honors `--format json` (machine-readable) and `--format md`/`markdown`;
+any other value (including `compact`/`diagnostic`) renders as plain text. Use
+`--format json` for retry-loop parsing.
+
 New flags:
-- `--format compact` — single-line per scenario, human-readable: `[PASS] 场景名 [FAIL] 场景名`
-- `--format diagnostic` — JSON with full stdout/stderr from test runs
 - `--resume` — skip already-passed scenarios (incremental mode)
 - `--resume=conservative` — rerun all but detect regressions
 - `--review-mode auto` (default) — treat `pending_review` as pass
@@ -76,7 +118,7 @@ New flags:
 
 ```bash
 agent-spec guard \
-  [--spec-dir specs] \
+  [--spec-dir docs] \
   [--code .] \
   [--change <path>]... \
   [--change-scope staged|worktree] \
@@ -187,10 +229,10 @@ Use `--layers` to select which verification layers to run:
 
 ```bash
 # Only lint and boundary checking
-agent-spec lifecycle specs/task.spec --code . --layers lint,boundary
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --layers lint,boundary
 
 # Skip lint, run structural + boundary + test
-agent-spec lifecycle specs/task.spec --code . --layers boundary,test
+agent-spec lifecycle docs/features/<goal>/spec.md --code . --layers boundary,test
 ```
 
 Available layers: `lint`, `boundary`, `test`, `ai`, `complexity`
@@ -199,7 +241,7 @@ Available layers: `lint`, `boundary`, `test`, `ai`, `complexity`
 
 ```bash
 agent-spec graph \
-  [--spec-dir specs] \
+  [--spec-dir docs] \
   [--format dot|svg]
 ```
 
@@ -215,11 +257,106 @@ Example:
 
 ```bash
 # Generate DOT and view
-agent-spec graph --spec-dir specs/roadmap
+agent-spec graph --spec-dir docs
 
 # Generate SVG
-agent-spec graph --spec-dir specs/roadmap --format svg > deps.svg
+agent-spec graph --spec-dir docs --format svg > deps.svg
 ```
+
+## BDD-spine Commands (0.3.0)
+
+Additive commands from the BDD-spine release. Verdict semantics and `is_passing`
+are unchanged; these are sensors (lint / report / audit), not new gates.
+
+### matrix
+
+```bash
+agent-spec matrix <SPEC> \
+  --code <CODE> \
+  [--change <PATH>] [--change-scope none|staged|worktree] \
+  [--ai-mode off|stub|caller] \
+  [--format text|json|markdown]
+```
+
+Renders the coverage matrix: **Rule × Scenario × Test × Verdict × Provenance**.
+Provenance is `Computational` (mechanical evidence) vs `Inferential` (AI). Shares
+`verify`'s change-set and ai-mode flags and default semantics. Scenarios with no
+matching test surface as orphan rows.
+
+### promote
+
+```bash
+agent-spec promote <SPEC> \
+  --rule <RULE_ID> \
+  --to <CAPABILITY_NAME> \
+  --code <CODE>
+```
+
+Promotes a passing task Rule into `docs/capabilities/<name>.spec.md` (the
+living-spec library). The promote gate requires the Rule's Examples to pass and
+at least one Example to exist. The Rule's stable `id` is preserved across the
+lift — only its scope changes (Task → Capability). The capability name is
+path-traversal-checked.
+
+### audit
+
+```bash
+agent-spec audit [--spec-dir docs] [--format text|json]
+```
+
+Mechanically aggregates spec-library health: `spec_count`, `rule_count`,
+`scenario_count`, `unproven_rules` (Rules with no proving Example),
+`ungrouped_scenarios` (scenarios under no Rule), `open_questions`,
+`malformed_rules`. **Observability only — never gates / never changes exit code
+on health.** Reuses the same resolved/malformed definitions as lint/parser.
+
+### discover
+
+```bash
+agent-spec discover --from-codebase \
+  --code <DIR> \
+  --name <SPEC_NAME> \
+  [--out <FILE>]
+```
+
+Reverse-engineers a draft task spec from existing Rust test functions: one
+`Test:`-bound scenario per test, placeholder When/Then steps, plus a `## Questions`
+seed flagging the draft as auto-generated and needing human refinement. The draft
+is guaranteed parseable. Cold-start aid only — it is NOT a finished contract.
+Prints to stdout unless `--out` is given.
+
+### check-structure
+
+```bash
+agent-spec check-structure \
+  --code <DIR> \
+  --forbid <SUBSTRING> \
+  --in <FILE_GLOB>
+```
+
+Mechanical layering guard (dependency-cruiser-lite): fails (non-zero exit) if any
+file matching `--in` contains `--forbid`. Example: forbid `clients/**` from
+referencing `crate::services`:
+
+```bash
+agent-spec check-structure --code src --forbid crate::services --in "clients/**"
+```
+
+`**` matches across directories, `*` matches a single path segment.
+
+### gen-integrations
+
+```bash
+agent-spec gen-integrations \
+  [--target agents|cursor|claude|all] \
+  [--out <DIR>] \
+  [--check]
+```
+
+Generates per-tool integration files (agents / cursor / claude) from a single
+source. `--check` compares on-disk files to what would be generated and exits
+non-zero on drift — use it as a CI drift gate. Write and check share the same
+renderer, so "check passes" is equivalent to "write is a no-op".
 
 ## Frontmatter: depends and estimate
 
